@@ -1,0 +1,8 @@
+# Секреты и runtime — не в git
+www/env.php
+www/data/
+
+# Артефакты среды
+.superpowers/
+.claude/settings.local.json
+.DS_Store

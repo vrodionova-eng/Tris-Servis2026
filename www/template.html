@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- B24 JS SDK подключается в iframe-режиме автоматически. Подключаем сами
+       только для подстраховки + чтобы локальное открытие через init.php тоже
+       не падало. -->
+  <script src="//api.bitrix24.com/api/v1/"></script>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Приложение</h1>
+      <p class="muted">Шаблон single-tenant B24 local-app. Подмени UI на свой.</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Состояние</h2>
+        <ul id="state">
+          <li>BX24: <span id="bx24-state">проверяю…</span></li>
+          <li>Сессия: <span id="session-state">проверяю…</span></li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Что дальше</h2>
+        <ol>
+          <li>Переименуй title и шапку под проект.</li>
+          <li>Добавь свои UI-блоки в этот файл.</li>
+          <li>Добавь свои endpoint'ы в <code>api/</code>.</li>
+          <li>Если нужен placement (вкладка в карточке / пункт в меню) — заполни <code>api/bind.php</code> и открой <code>/api/bind.php</code> из админ-сессии.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

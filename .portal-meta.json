@@ -1,0 +1,6 @@
+{
+  "owner": "dima.z",
+  "tenancy": "single",
+  "template": "_b24-single-php",
+  "stack": ["php", "vanilla-js", "file-store"]
+}
