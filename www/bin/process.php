@@ -19,8 +19,11 @@ if (php_sapi_name() !== 'cli') {
 }
 
 require_once __DIR__ . '/../env.php';
-require_once __DIR__ . '/../api/b24.php';
+require_once __DIR__ . '/../api/store.php';
 require_once __DIR__ . '/../api/lib.php';
+require_once __DIR__ . '/../api/b24.php';
+require_once __DIR__ . '/../api/sheets.php';
+require_once __DIR__ . '/../api/sync.php';
 
 $LOG_DIR   = DATA_ROOT . '/cron-logs';
 $LOCK_FILE = DATA_ROOT . '/cron.lock';
@@ -37,8 +40,12 @@ function logline(string $s): void {
 $lock = @fopen($LOCK_FILE, 'c');
 if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) exit(0);
 
-if (!is_file(B24_TOKENS_FILE)) {
-    logline('SKIP: приложение ещё не установлено (нет b24-tokens.php)');
+if (!defined('B24_WEBHOOK_URL') || B24_WEBHOOK_URL === '') {
+    logline('SKIP: B24_WEBHOOK_URL не задан в env.php');
+    exit(0);
+}
+if (!is_file(GOOGLE_SA_FILE)) {
+    logline('SKIP: Google SA key не найден (' . GOOGLE_SA_FILE . ')');
     exit(0);
 }
 
@@ -54,15 +61,116 @@ try {
 $duration = round(microtime(true) - $started, 2);
 logline("=== end ({$duration}s) ===");
 
-/**
- * Заглушка cron-задачи. Заменить телом конкретного проекта.
- *
- * Пример:
- *   $b24 = b24();
- *   $deals = $b24->call('crm.item.list', ['entityTypeId' => 2, 'filter' => [...]]);
- *   // ... обработать
- *   logline('processed ' . count($deals['result']['items'] ?? []) . ' deals');
- */
-function runJob(): void {
-    logline('NOOP: runJob() — заглушка, заменить телом задачи проекта');
+function runJob(): void
+{
+    // 1. Load state
+    $lastSyncData = storeRead(LAST_SYNC_FILE);
+    $lastSyncTs   = isset($lastSyncData['ts']) ? (int)$lastSyncData['ts'] : 0;
+    $dealCells    = storeRead(DEAL_CELLS_FILE) ?? [];
+    $dealInfo     = storeRead(DEAL_INFO_FILE)  ?? [];
+
+    // 2. Google Sheets: read existing dates once
+    $sheets    = new GoogleSheets(SHEETS_ID);
+    $dateToRow = $sheets->readColumnA();
+    logline('Sheet date rows: ' . count($dateToRow));
+
+    // 3. Resource names (cached)
+    $resourceNames = loadResourceNames();
+    logline('Resources: ' . count($resourceNames));
+
+    // 4. Fetch modified deals from B24 (paginated)
+    $portal = (string)parse_url(B24_WEBHOOK_URL, PHP_URL_HOST);
+    $filter = $lastSyncTs > 0
+        ? ['>=DATE_MODIFY' => date('Y-m-d\TH:i:s', $lastSyncTs)]
+        : [];
+    $select = array_merge(['ID', 'TITLE'], B24_BOOKING_FIELDS);
+
+    $allDeals = [];
+    $start    = 0;
+    do {
+        $resp  = b24wh('crm.item.list', [
+            'entityTypeId' => 2,
+            'filter'       => $filter,
+            'select'       => $select,
+            'order'        => ['ID' => 'ASC'],
+            'start'        => $start,
+        ]);
+        $items = $resp['items'] ?? [];
+        $allDeals = array_merge($allDeals, $items);
+        $start += 50;
+    } while (count($items) === 50 && $start < 1000);
+
+    logline('Deals fetched: ' . count($allDeals));
+
+    if (empty($allDeals)) {
+        storeWrite(LAST_SYNC_FILE, ['ts' => time()]);
+        logline('No changes');
+        return;
+    }
+
+    // 5. Process each deal, collect affected cells
+    $affectedKeys = [];
+
+    foreach ($allDeals as $deal) {
+        $dealId = (string)($deal['id'] ?? '');
+        if ($dealId === '') continue;
+
+        $title = (string)($deal['title'] ?? '#' . $dealId);
+        $url   = 'https://' . $portal . '/crm/deal/details/' . $dealId . '/';
+
+        $oldCells = $dealCells[$dealId] ?? [];
+        $newCells = parseBookings($deal, $resourceNames);
+
+        foreach (array_merge($oldCells, $newCells) as $pos) {
+            $affectedKeys[$pos['date'] . '|' . $pos['tech']] = true;
+        }
+
+        if (empty($newCells)) {
+            unset($dealCells[$dealId], $dealInfo[$dealId]);
+        } else {
+            $dealCells[$dealId] = $newCells;
+            $dealInfo[$dealId]  = ['title' => $title, 'url' => $url];
+        }
+    }
+
+    // 6. For each affected cell: ensure date row exists, build richText update
+    $updates = [];
+
+    foreach (array_keys($affectedKeys) as $key) {
+        [$date, $tech] = explode('|', $key, 2);
+        $col = TECH_COLUMNS[$tech] ?? null;
+        if ($col === null) continue;
+
+        if (!isset($dateToRow[$date])) {
+            $insertPos = findInsertRow($date, $dateToRow);
+            // Shift rows >= insertPos down by 1
+            foreach ($dateToRow as $d => &$r) {
+                if ($r >= $insertPos) $r++;
+            }
+            unset($r);
+            $sheets->insertDateRow($date, $insertPos);
+            $dateToRow[$date] = $insertPos;
+            logline("Row inserted: $date → $insertPos");
+        }
+
+        $row  = $dateToRow[$date];
+        $rich = buildRichText($date, $tech, $dealCells, $dealInfo);
+        $updates[] = [
+            'cellRef' => $col . $row,
+            'text'    => $rich !== null ? $rich['text'] : '',
+            'runs'    => $rich !== null ? $rich['runs'] : [],
+        ];
+    }
+
+    // 7. One batchUpdate call for all changes
+    if (!empty($updates)) {
+        $sheets->batchUpdate($updates);
+        logline('Cells updated: ' . count($updates));
+    }
+
+    // 8. Persist state
+    storeWrite(LAST_SYNC_FILE, ['ts' => time()]);
+    storeWrite(DEAL_CELLS_FILE, $dealCells);
+    storeWrite(DEAL_INFO_FILE,  $dealInfo);
+    logline('State saved');
 }

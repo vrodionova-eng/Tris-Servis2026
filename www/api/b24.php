@@ -212,6 +212,26 @@ function resolveUserIdFromAuth(string $authId, string $domain): ?string {
     return $id ? (string)$id : null;
 }
 
+/**
+ * Webhook-based B24 REST call (server-side cron, no OAuth needed).
+ * Returns $response['result'] stripped of the wrapper.
+ */
+function b24wh(string $method, array $params = []): array {
+    if (!defined('B24_WEBHOOK_URL') || B24_WEBHOOK_URL === '') {
+        throw new \RuntimeException('B24_WEBHOOK_URL не задан в env.php');
+    }
+    require_once __DIR__ . '/lib.php';
+    $url  = rtrim(B24_WEBHOOK_URL, '/') . '/' . $method;
+    $resp = httpJson('POST', $url, [
+        'headers' => ['Content-Type: application/json'],
+        'body'    => json_encode($params, JSON_UNESCAPED_UNICODE),
+    ]);
+    if (isset($resp['error'])) {
+        throw new \RuntimeException('B24 ' . $method . ': ' . ($resp['error_description'] ?? $resp['error']));
+    }
+    return $resp['result'] ?? $resp;
+}
+
 function renderInstallFinishPage(): void {
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Установка</title>'
