@@ -7,52 +7,68 @@ require_once __DIR__ . '/lib.php';
 require_once __DIR__ . '/b24.php';
 
 /**
- * Load calendar section ID → surname map from crm.deal.fields (cached).
- * The resourcebooking UF field stores calendar event IDs; each event has a SECT_ID
- * that maps to a technician/resource. We build this map from field metadata.
+ * Load resource maps from crm.deal.fields (cached).
  *
- * Returns ['section_id' => 'Surname'].
+ * Returns [
+ *   'sections' => ['calSectionId' => 'Surname'],  // resource section bookings
+ *   'users'    => ['b24UserId'    => 'Surname'],  // employee (personal calendar) bookings
+ * ]
  */
 function loadResourceNames(): array
 {
     $cached = storeRead(RESOURCE_NAMES_FILE);
-    if (is_array($cached) && !empty($cached)) return $cached;
+    // Old cache format was a flat array; new format has 'sections' key.
+    if (is_array($cached) && isset($cached['sections'])) return $cached;
 
-    $fields = b24wh('crm.deal.fields', []);
-    $names  = [];
+    $fields   = b24wh('crm.deal.fields', []);
+    $sections = [];
+    $users    = [];
 
     foreach (B24_BOOKING_FIELDS as $fieldName) {
         $field    = $fields[$fieldName] ?? null;
         if (!$field) continue;
-        $sections = $field['settings']['RESOURCES']['resource']['SECTIONS'] ?? [];
-        foreach ($sections as $s) {
+        $resource = $field['settings']['RESOURCES']['resource'] ?? [];
+
+        foreach ($resource['SECTIONS'] ?? [] as $s) {
             $id      = (string)($s['ID']   ?? '');
             $rawName = trim((string)($s['NAME'] ?? ''));
             if ($id === '' || $rawName === '') continue;
-            // First word is the surname (Russian naming: Фамилия Имя)
-            $surname = explode(' ', $rawName)[0];
-            $names[$id] = $surname;
+            $sections[$id] = explode(' ', $rawName)[0];
+        }
+
+        // Employees selected as B24 users → events go to personal calendar (SECT_ID=0).
+        // Identify them by OWNER_ID from the calendar event.
+        foreach ($resource['USERS'] ?? [] as $u) {
+            $id      = (string)($u['ID']   ?? '');
+            $rawName = trim((string)($u['NAME'] ?? ''));
+            if ($id === '' || $rawName === '') continue;
+            $users[$id] = explode(' ', $rawName)[0];
         }
     }
 
-    storeWrite(RESOURCE_NAMES_FILE, $names);
-    return $names;
+    $maps = ['sections' => $sections, 'users' => $users];
+    storeWrite(RESOURCE_NAMES_FILE, $maps);
+    return $maps;
 }
 
 /**
  * Parse all booking fields from a deal.
  * Each UF resourcebooking field stores an array of calendar event IDs.
- * We fetch each event via calendar.event.getbyid to get DATE_FROM + SECT_ID.
+ * We fetch each event via calendar.event.getbyid to get DATE_FROM + technician identity.
  *
- * @param array $deal          Deal data from crm.deal.list
- * @param array $resourceNames ['sect_id' => 'Surname']
- * @return array               [{date: 'DD.MM.YYYY', tech: 'Surname'}, ...]
+ * Technician is identified two ways:
+ *  - SECT_ID ≠ 0 → resource section booking → look up in $resourceMaps['sections']
+ *  - SECT_ID = 0 → personal calendar booking → look up OWNER_ID in $resourceMaps['users']
+ *
+ * @param array $deal         Deal data from crm.deal.list (uppercase field names)
+ * @param array $resourceMaps ['sections' => [sectId => surname], 'users' => [userId => surname]]
+ * @return array              [{date: 'DD.MM.YYYY', tech: 'Surname'}, ...]
  */
-function parseBookings(array $deal, array $resourceNames): array
+function parseBookings(array $deal, array $resourceMaps): array
 {
-    $cells = [];
+    $sections = $resourceMaps['sections'] ?? [];
+    $users    = $resourceMaps['users']    ?? [];
 
-    // Collect all calendar event IDs from all booking fields
     $eventIds = [];
     foreach (B24_BOOKING_FIELDS as $field) {
         $raw = $deal[$field] ?? null;
@@ -63,6 +79,7 @@ function parseBookings(array $deal, array $resourceNames): array
         }
     }
 
+    $cells = [];
     foreach ($eventIds as $eventId) {
         try {
             $event = b24wh('calendar.event.getbyid', ['id' => $eventId]);
@@ -71,30 +88,34 @@ function parseBookings(array $deal, array $resourceNames): array
         }
         if (empty($event)) continue;
 
-        $sectId  = (string)($event['SECT_ID']   ?? '');
-        $dateFrom = (string)($event['DATE_FROM'] ?? '');
-        $dateTo   = (string)($event['DATE_TO']   ?? '');
+        $sectId   = (string)($event['SECT_ID']   ?? '');
+        $ownerId  = (string)($event['OWNER_ID']  ?? '');
+        $dateFrom = (string)($event['DATE_FROM']  ?? '');
+        $dateTo   = (string)($event['DATE_TO']    ?? '');
 
-        $surname = $resourceNames[$sectId] ?? null;
+        // Resource section event → look up by section ID.
+        // Personal calendar event (SECT_ID=0) → look up by calendar owner (B24 user ID).
+        if ($sectId !== '' && $sectId !== '0') {
+            $surname = $sections[$sectId] ?? null;
+        } else {
+            $surname = $users[$ownerId] ?? null;
+        }
+
         if ($surname === null || !isset(TECH_COLUMNS[$surname])) continue;
 
         $fromTs = strtotime($dateFrom);
         if ($fromTs === false || $fromTs <= 0) continue;
 
+        $days = 1;
         if ($dateTo !== '') {
             $toTs = strtotime($dateTo);
-            $days = ($toTs !== false && $toTs > $fromTs)
-                ? max(1, (int)ceil(($toTs - $fromTs) / 86400))
-                : 1;
-        } else {
-            $days = 1;
+            if ($toTs !== false && $toTs > $fromTs) {
+                $days = max(1, (int)ceil(($toTs - $fromTs) / 86400));
+            }
         }
 
         for ($d = 0; $d < $days; $d++) {
-            $cells[] = [
-                'date' => date('d.m.Y', $fromTs + $d * 86400),
-                'tech' => $surname,
-            ];
+            $cells[] = ['date' => date('d.m.Y', $fromTs + $d * 86400), 'tech' => $surname];
         }
     }
 

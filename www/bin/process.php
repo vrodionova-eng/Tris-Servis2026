@@ -1,8 +1,8 @@
 <?php
 // CRON-воркер. Single-tenant: один портал = одна задача по расписанию.
 //
-// Пример cron-строки (раз в 15 минут):
-//   */15 * * * * /usr/bin/php /<path>/www/bin/process.php >/dev/null 2>&1
+// Пример cron-строки (раз в 2 минуты):
+//   */2 * * * * /usr/bin/php /var/www/Tris-Servis2026/bin/process.php
 //
 // Защита: flock на DATA_ROOT/cron.lock — параллельные запуски не накладываются.
 // Логи: DATA_ROOT/cron-logs/<date>.log с ротацией по дням.
@@ -78,7 +78,8 @@ function runJob(): void
     $resourceNames = loadResourceNames();
     logline('Resources: ' . count($resourceNames));
 
-    // 4. Fetch modified deals from B24 (paginated)
+    // 4. Fetch modified deals from B24 (paginated).
+    // crm.deal.list returns UF_ fields when explicitly selected; crm.item.list does not.
     $portal = (string)parse_url(B24_WEBHOOK_URL, PHP_URL_HOST);
     $filter = $lastSyncTs > 0
         ? ['>=DATE_MODIFY' => date('Y-m-d\TH:i:s', $lastSyncTs)]
@@ -88,14 +89,13 @@ function runJob(): void
     $allDeals = [];
     $start    = 0;
     do {
-        $resp  = b24wh('crm.item.list', [
-            'entityTypeId' => 2,
-            'filter'       => $filter,
-            'select'       => $select,
-            'order'        => ['ID' => 'ASC'],
-            'start'        => $start,
+        $items = b24wh('crm.deal.list', [
+            'filter' => $filter,
+            'select' => $select,
+            'order'  => ['ID' => 'ASC'],
+            'start'  => $start,
         ]);
-        $items = $resp['items'] ?? [];
+        if (!is_array($items)) $items = [];
         $allDeals = array_merge($allDeals, $items);
         $start += 50;
     } while (count($items) === 50 && $start < 1000);
@@ -112,10 +112,10 @@ function runJob(): void
     $affectedKeys = [];
 
     foreach ($allDeals as $deal) {
-        $dealId = (string)($deal['id'] ?? '');
+        $dealId = (string)($deal['ID'] ?? '');
         if ($dealId === '') continue;
 
-        $title = (string)($deal['title'] ?? '#' . $dealId);
+        $title = (string)($deal['TITLE'] ?? '#' . $dealId);
         $url   = 'https://' . $portal . '/crm/deal/details/' . $dealId . '/';
 
         $oldCells = $dealCells[$dealId] ?? [];
