@@ -36,11 +36,11 @@ function loadResourceNames(): array
             $sections[$id] = explode(' ', $rawName)[0];
         }
 
-        // Employees selected as B24 users → events go to personal calendar (SECT_ID=0).
-        // Identify them by OWNER_ID from the calendar event.
-        foreach ($resource['USERS'] ?? [] as $u) {
-            $id      = (string)($u['ID']   ?? '');
-            $rawName = trim((string)($u['NAME'] ?? ''));
+        // Employees added as B24 users in "Сотрудники" → stored in SELECTED_USERS.
+        // Their bookings create events in personal calendar (SECT_ID=0, OWNER_ID=userId).
+        foreach ($field['settings']['SELECTED_USERS'] ?? [] as $u) {
+            $id      = (string)($u['id']    ?? '');
+            $rawName = trim((string)($u['title'] ?? ''));
             if ($id === '' || $rawName === '') continue;
             $users[$id] = explode(' ', $rawName)[0];
         }
