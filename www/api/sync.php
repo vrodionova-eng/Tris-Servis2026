@@ -7,23 +7,31 @@ require_once __DIR__ . '/lib.php';
 require_once __DIR__ . '/b24.php';
 
 /**
- * Load resource names from B24 (cached in RESOURCE_NAMES_FILE).
- * Returns ['resource_id' => 'Surname'].
+ * Load calendar section ID → surname map from crm.deal.fields (cached).
+ * The resourcebooking UF field stores calendar event IDs; each event has a SECT_ID
+ * that maps to a technician/resource. We build this map from field metadata.
+ *
+ * Returns ['section_id' => 'Surname'].
  */
 function loadResourceNames(): array
 {
     $cached = storeRead(RESOURCE_NAMES_FILE);
     if (is_array($cached) && !empty($cached)) return $cached;
 
-    $resp  = b24wh('crm.resourcebooking.resource.list', ['select' => ['ID', 'NAME'], 'limit' => 200]);
-    $items = $resp['items'] ?? (is_array($resp) ? array_values($resp) : []);
+    $fields = b24wh('crm.deal.fields', []);
+    $names  = [];
 
-    $names = [];
-    foreach ($items as $r) {
-        $id   = (string)($r['id']   ?? $r['ID']   ?? '');
-        $name = (string)($r['name'] ?? $r['NAME'] ?? '');
-        if ($id !== '' && $name !== '') {
-            $names[$id] = explode(' ', trim($name))[0];
+    foreach (B24_BOOKING_FIELDS as $fieldName) {
+        $field    = $fields[$fieldName] ?? null;
+        if (!$field) continue;
+        $sections = $field['settings']['RESOURCES']['resource']['SECTIONS'] ?? [];
+        foreach ($sections as $s) {
+            $id      = (string)($s['ID']   ?? '');
+            $rawName = trim((string)($s['NAME'] ?? ''));
+            if ($id === '' || $rawName === '') continue;
+            // First word is the surname (Russian naming: Фамилия Имя)
+            $surname = explode(' ', $rawName)[0];
+            $names[$id] = $surname;
         }
     }
 
@@ -33,52 +41,60 @@ function loadResourceNames(): array
 
 /**
  * Parse all booking fields from a deal.
+ * Each UF resourcebooking field stores an array of calendar event IDs.
+ * We fetch each event via calendar.event.getbyid to get DATE_FROM + SECT_ID.
  *
- * @param array $deal          Deal data from B24 crm.item.list
- * @param array $resourceNames ['resource_id' => 'Surname']
+ * @param array $deal          Deal data from crm.deal.list
+ * @param array $resourceNames ['sect_id' => 'Surname']
  * @return array               [{date: 'DD.MM.YYYY', tech: 'Surname'}, ...]
  */
 function parseBookings(array $deal, array $resourceNames): array
 {
     $cells = [];
 
+    // Collect all calendar event IDs from all booking fields
+    $eventIds = [];
     foreach (B24_BOOKING_FIELDS as $field) {
         $raw = $deal[$field] ?? null;
-        if ($raw === null || $raw === '' || $raw === []) continue;
+        if (!is_array($raw) || empty($raw)) continue;
+        foreach ($raw as $id) {
+            $eventId = (int)$id;
+            if ($eventId > 0) $eventIds[] = $eventId;
+        }
+    }
 
-        $bookings = is_string($raw)
-            ? (json_decode($raw, true) ?? [])
-            : (array)$raw;
+    foreach ($eventIds as $eventId) {
+        try {
+            $event = b24wh('calendar.event.getbyid', ['id' => $eventId]);
+        } catch (Throwable $e) {
+            continue;
+        }
+        if (empty($event)) continue;
 
-        foreach ($bookings as $booking) {
-            if (!is_array($booking)) continue;
+        $sectId  = (string)($event['SECT_ID']   ?? '');
+        $dateFrom = (string)($event['DATE_FROM'] ?? '');
+        $dateTo   = (string)($event['DATE_TO']   ?? '');
 
-            $resourceId = (string)($booking['RESOURCE_ID'] ?? '');
-            $dateFrom   = (string)($booking['DATE_FROM']   ?? '');
-            if ($resourceId === '' || $dateFrom === '') continue;
+        $surname = $resourceNames[$sectId] ?? null;
+        if ($surname === null || !isset(TECH_COLUMNS[$surname])) continue;
 
-            $surname = $resourceNames[$resourceId] ?? null;
-            if ($surname === null || !isset(TECH_COLUMNS[$surname])) continue;
+        $fromTs = strtotime($dateFrom);
+        if ($fromTs === false || $fromTs <= 0) continue;
 
-            $fromTs = strtotime($dateFrom);
-            if ($fromTs === false || $fromTs < 0) continue;
+        if ($dateTo !== '') {
+            $toTs = strtotime($dateTo);
+            $days = ($toTs !== false && $toTs > $fromTs)
+                ? max(1, (int)ceil(($toTs - $fromTs) / 86400))
+                : 1;
+        } else {
+            $days = 1;
+        }
 
-            $dateTo = (string)($booking['DATE_TO'] ?? '');
-            if ($dateTo !== '') {
-                $toTs = strtotime($dateTo);
-                $days = ($toTs !== false && $toTs >= $fromTs)
-                    ? (int)round(($toTs - $fromTs) / 86400) + 1
-                    : 1;
-            } else {
-                $days = 1;
-            }
-
-            for ($d = 0; $d < $days; $d++) {
-                $cells[] = [
-                    'date' => date('d.m.Y', $fromTs + $d * 86400),
-                    'tech' => $surname,
-                ];
-            }
+        for ($d = 0; $d < $days; $d++) {
+            $cells[] = [
+                'date' => date('d.m.Y', $fromTs + $d * 86400),
+                'tech' => $surname,
+            ];
         }
     }
 
