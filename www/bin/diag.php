@@ -11,7 +11,7 @@ require __DIR__ . '/../api/b24.php';
 // Show raw data of the most recently modified deal + all booking fields
 $r = b24wh('crm.item.list', [
     'entityTypeId' => 2,
-    'order'  => ['DATE_MODIFY' => 'DESC'],
+    'order'  => ['ID' => 'DESC'],
     'select' => array_merge(['ID', 'TITLE', 'DATE_MODIFY'], B24_BOOKING_FIELDS),
     'start'  => 0,
 ]);
