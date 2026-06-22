@@ -7,24 +7,14 @@ require __DIR__ . '/../api/store.php';
 require __DIR__ . '/../api/lib.php';
 require __DIR__ . '/../api/b24.php';
 
-// 1. Dump SECTIONS and USERS from booking field settings
-echo "=== crm.deal.fields: booking field SECTIONS + USERS ===\n";
+// 1. Dump full raw settings for first booking field (to find where employees are stored)
+echo "=== crm.deal.fields: full settings for first booking field ===\n";
 $fields = b24wh('crm.deal.fields', []);
-foreach (B24_BOOKING_FIELDS as $fn) {
-    $f = $fields[$fn] ?? null;
-    echo "Field: $fn\n";
-    if (!$f) { echo "  NOT FOUND\n\n"; continue; }
-    $resource = $f['settings']['RESOURCES']['resource'] ?? [];
-
-    echo "  SECTIONS (calendar resource sections):\n";
-    foreach ($resource['SECTIONS'] ?? [] as $s) {
-        printf("    ID=%-4s  NAME=%s\n", $s['ID'] ?? '?', $s['NAME'] ?? '?');
-    }
-    echo "  USERS (employees → personal calendar):\n";
-    foreach ($resource['USERS'] ?? [] as $u) {
-        printf("    ID=%-4s  NAME=%s\n", $u['ID'] ?? '?', $u['NAME'] ?? '?');
-    }
-    echo "\n";
+$firstField = B24_BOOKING_FIELDS[0] ?? null;
+if ($firstField && isset($fields[$firstField])) {
+    echo json_encode($fields[$firstField]['settings'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n\n";
+} else {
+    echo "Field not found\n\n";
 }
 
 // 2. Full raw calendar events for events that showed SECT_ID=0
