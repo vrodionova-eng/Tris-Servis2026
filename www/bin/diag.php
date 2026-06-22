@@ -1,5 +1,5 @@
 <?php
-// Diagnostic: booking records + resource names.
+// Diagnostic: booking records for IDs from deal #887.
 if (php_sapi_name() !== 'cli') { http_response_code(403); exit('CLI only'); }
 
 require __DIR__ . '/../env.php';
@@ -7,26 +7,27 @@ require __DIR__ . '/../api/store.php';
 require __DIR__ . '/../api/lib.php';
 require __DIR__ . '/../api/b24.php';
 
-// 1. Booking records for IDs from deal #887
-echo "=== booking.v1.booking.get ===\n";
+echo "=== booking.v1.booking.get for IDs 495, 497 ===\n";
 foreach ([495, 497] as $id) {
     try {
         $r = b24wh('booking.v1.booking.get', ['id' => $id]);
-        echo "ID=$id: from=" . ($r['datePeriod']['from']['timestamp'] ?? '?')
-            . " to=" . ($r['datePeriod']['to']['timestamp'] ?? '?')
-            . " resourceIds=" . json_encode($r['resourceIds'] ?? []) . "\n";
+        echo json_encode($r, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n\n";
     } catch (Throwable $e) {
-        echo "ID=$id ERROR: " . $e->getMessage() . "\n";
+        echo "ID $id ERROR: " . $e->getMessage() . "\n";
     }
 }
 
-// 2. All resources (all types)
-echo "\n=== booking.v1.resource.list (all) ===\n";
+echo "=== booking.v1.resource.list (compact) ===\n";
 try {
     $r = b24wh('booking.v1.resource.list', []);
-    $list = $r['resources'] ?? (is_array($r) ? $r : []);
+    // Try different response shapes
+    $list = $r['resources'] ?? $r['resource'] ?? (array_values($r)[0] ?? []);
+    if (!is_array($list)) $list = [];
     foreach ($list as $res) {
-        echo "  id={$res['id']} typeId={$res['typeId']} name={$res['name']}\n";
+        if (!is_array($res)) continue;
+        echo "  id=" . ($res['id'] ?? '?')
+            . " typeId=" . ($res['typeId'] ?? '?')
+            . " name=" . ($res['name'] ?? '?') . "\n";
     }
 } catch (Throwable $e) {
     echo "ERROR: " . $e->getMessage() . "\n";
