@@ -52,6 +52,26 @@ function loadResourceNames(): array
 }
 
 /**
+ * Get user's last name (фамилия) by B24 user ID via user.get.
+ * Results are cached in-process to avoid duplicate API calls.
+ */
+function resolveUserSurname(string $userId): ?string
+{
+    if ($userId === '' || $userId === '0') return null;
+    static $cache = [];
+    if (array_key_exists($userId, $cache)) return $cache[$userId];
+
+    try {
+        $resp = b24wh('user.get', ['ID' => $userId]);
+        $user = is_array($resp) ? ($resp[0] ?? null) : null;
+        $surname = trim((string)($user['LAST_NAME'] ?? ''));
+        return $cache[$userId] = ($surname !== '' ? $surname : null);
+    } catch (Throwable $e) {
+        return $cache[$userId] = null;
+    }
+}
+
+/**
  * Parse all booking fields from a deal.
  * Each UF resourcebooking field stores an array of calendar event IDs.
  * We fetch each event via calendar.event.getbyid to get DATE_FROM + technician identity.
@@ -94,11 +114,11 @@ function parseBookings(array $deal, array $resourceMaps): array
         $dateTo   = (string)($event['DATE_TO']    ?? '');
 
         // Resource section event → look up by section ID.
-        // Personal calendar event (SECT_ID=0) → look up by calendar owner (B24 user ID).
+        // Personal calendar event (SECT_ID=0) → resolve user name via user.get (OWNER_ID).
         if ($sectId !== '' && $sectId !== '0') {
             $surname = $sections[$sectId] ?? null;
         } else {
-            $surname = $users[$ownerId] ?? null;
+            $surname = $users[$ownerId] ?? resolveUserSurname($ownerId);
         }
 
         if ($surname === null) continue;
