@@ -101,7 +101,7 @@ function parseBookings(array $deal, array $resourceMaps): array
             $surname = $users[$ownerId] ?? null;
         }
 
-        if ($surname === null || !isset(TECH_COLUMNS[$surname])) continue;
+        if ($surname === null) continue;
 
         $fromTs = strtotime($dateFrom);
         if ($fromTs === false || $fromTs <= 0) continue;
@@ -130,6 +130,23 @@ function parseBookings(array $deal, array $resourceMaps): array
         }
     }
     return $unique;
+}
+
+/**
+ * Read spreadsheet row-1 headers and build surname → column letter map.
+ * E.g. ['Тусюк' => 'B', 'Муха' => 'D', 'Юрченков' => 'F'].
+ * Matching is by first word of the header (surname), case-sensitive.
+ */
+function loadColumnMap(GoogleSheets $sheets): array
+{
+    $map = [];
+    foreach ($sheets->readHeaderRow() as $col => $header) {
+        $surname = explode(' ', $header)[0];
+        if ($surname !== '') {
+            $map[$surname] = $col;
+        }
+    }
+    return $map;
 }
 
 /**

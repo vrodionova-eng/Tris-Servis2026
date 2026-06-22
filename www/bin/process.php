@@ -69,14 +69,18 @@ function runJob(): void
     $dealCells    = storeRead(DEAL_CELLS_FILE) ?? [];
     $dealInfo     = storeRead(DEAL_INFO_FILE)  ?? [];
 
-    // 2. Google Sheets: read existing dates once
+    // 2. Google Sheets: read existing dates + column headers
     $sheets    = new GoogleSheets(SHEETS_ID);
     $dateToRow = $sheets->readColumnA();
     logline('Sheet date rows: ' . count($dateToRow));
 
+    $columnMap = loadColumnMap($sheets);
+    logline('Columns: ' . json_encode($columnMap, JSON_UNESCAPED_UNICODE));
+
     // 3. Resource names (cached)
     $resourceNames = loadResourceNames();
-    logline('Resources: ' . count($resourceNames));
+    logline('Resources: ' . count($resourceNames['sections'] ?? []) . ' sections, '
+        . count($resourceNames['users'] ?? []) . ' users');
 
     // 4. Fetch modified deals from B24 (paginated).
     // crm.deal.list returns UF_ fields when explicitly selected; crm.item.list does not.
@@ -138,7 +142,7 @@ function runJob(): void
 
     foreach (array_keys($affectedKeys) as $key) {
         [$date, $tech] = explode('|', $key, 2);
-        $col = TECH_COLUMNS[$tech] ?? null;
+        $col = $columnMap[$tech] ?? null;
         if ($col === null) continue;
 
         if (!isset($dateToRow[$date])) {

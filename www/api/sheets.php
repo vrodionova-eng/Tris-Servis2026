@@ -77,6 +77,30 @@ final class GoogleSheets
     // ── Read ──────────────────────────────────────────────────────────────────
 
     /**
+     * Read row 1 header labels for columns B–Z.
+     * Returns ['B' => 'Тусюк', 'D' => 'Муха', 'F' => 'Юрченков Влад', ...].
+     * Empty cells are omitted.
+     */
+    public function readHeaderRow(): array
+    {
+        $token = $this->getToken();
+        $range = rawurlencode(SHEETS_SHEET . '!B1:Z1');
+        $resp  = httpJson('GET',
+            "https://sheets.googleapis.com/v4/spreadsheets/{$this->spreadsheetId}/values/{$range}",
+            ['headers' => ["Authorization: Bearer {$token}"]]
+        );
+
+        $out = [];
+        foreach ($resp['values'][0] ?? [] as $i => $val) {
+            $label = trim((string)$val);
+            if ($label !== '') {
+                $out[chr(ord('B') + $i)] = $label;
+            }
+        }
+        return $out;
+    }
+
+    /**
      * Read column A, return date-string => 1-based row number.
      * Only rows matching DD.MM.YYYY are included.
      *
