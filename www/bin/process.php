@@ -1,14 +1,14 @@
 <?php
-// CRON-воркер. Single-tenant: один портал = одна задача по расписанию.
+// Cron worker: sync B24 bookings → Google Sheets.
+// Schedule: */2 * * * * /usr/bin/php /var/www/Tris-Servis2026/bin/process.php
 //
-// Пример cron-строки (раз в 2 минуты):
-//   */2 * * * * /usr/bin/php /var/www/Tris-Servis2026/bin/process.php
+// Strategy: employee-calendar-centric.
+//   1. Read personal calendars of all techs (calendar.event.get).
+//   2. Filter events by EVENT_TYPE="#resourcebooking#".
+//   3. Strip "Бронирование: " from NAME → match deal by title.
+//   4. Write richText (clickable) cells to Google Sheets.
 //
-// Защита: flock на DATA_ROOT/cron.lock — параллельные запуски не накладываются.
-// Логи: DATA_ROOT/cron-logs/<date>.log с ротацией по дням.
-//
-// Куда дописывать бизнес-логику: блок «runJob()» ниже. Внутри использовать
-// $b24 = b24() для REST-вызовов и helpers из api/lib.php для прочего.
+// State: DATA_ROOT/cron-cells.php stores previous cell set for stale-cell clearing.
 declare(strict_types=1);
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
@@ -27,25 +27,24 @@ require_once __DIR__ . '/../api/sync.php';
 
 $LOG_DIR   = DATA_ROOT . '/cron-logs';
 $LOCK_FILE = DATA_ROOT . '/cron.lock';
-
 if (!is_dir($LOG_DIR)) @mkdir($LOG_DIR, 0700, true);
 $LOG_FILE = $LOG_DIR . '/' . date('Y-m-d') . '.log';
 
-function logline(string $s): void {
+function logline(string $s): void
+{
     global $LOG_FILE;
     @file_put_contents($LOG_FILE, '[' . date('c') . '] ' . $s . "\n", FILE_APPEND);
 }
 
-// Анти-нахлёст: если предыдущий запуск ещё крутится — тихо выходим.
 $lock = @fopen($LOCK_FILE, 'c');
 if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) exit(0);
 
 if (!defined('B24_WEBHOOK_URL') || B24_WEBHOOK_URL === '') {
-    logline('SKIP: B24_WEBHOOK_URL не задан в env.php');
+    logline('SKIP: B24_WEBHOOK_URL not set');
     exit(0);
 }
 if (!is_file(GOOGLE_SA_FILE)) {
-    logline('SKIP: Google SA key не найден (' . GOOGLE_SA_FILE . ')');
+    logline('SKIP: Google SA key not found (' . GOOGLE_SA_FILE . ')');
     exit(0);
 }
 
@@ -58,123 +57,157 @@ try {
     logline('EXCEPTION: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
 }
 
-$duration = round(microtime(true) - $started, 2);
-logline("=== end ({$duration}s) ===");
+logline('=== end (' . round(microtime(true) - $started, 2) . 's) ===');
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function runJob(): void
 {
-    // 1. Load state
-    $lastSyncData = storeRead(LAST_SYNC_FILE);
-    $lastSyncTs   = isset($lastSyncData['ts']) ? (int)$lastSyncData['ts'] : 0;
-    $dealCells    = storeRead(DEAL_CELLS_FILE) ?? [];
-    $dealInfo     = storeRead(DEAL_INFO_FILE)  ?? [];
+    // State file: stores set of cells written in the previous run (for stale clearing)
+    $CELLS_STATE = DATA_ROOT . '/cron-cells.php';
 
-    // 2. Google Sheets: read existing dates + column headers
+    // ── 1. Spreadsheet structure ──────────────────────────────────────────────
     $sheets    = new GoogleSheets(SHEETS_ID);
     $dateToRow = $sheets->readColumnA();
-    logline('Sheet date rows: ' . count($dateToRow));
+    logline('Sheet rows: ' . count($dateToRow));
 
     $columnMap = loadColumnMap($sheets);
     logline('Columns: ' . json_encode($columnMap, JSON_UNESCAPED_UNICODE));
-
-    // 3. Resource names (cached)
-    $resourceNames = loadResourceNames();
-    logline('Resources: ' . count($resourceNames['sections'] ?? []) . ' sections, '
-        . count($resourceNames['users'] ?? []) . ' users');
-
-    // 4. Fetch modified deals from B24 (paginated).
-    // crm.deal.list returns UF_ fields when explicitly selected; crm.item.list does not.
-    $portal = (string)parse_url(B24_WEBHOOK_URL, PHP_URL_HOST);
-    $filter = $lastSyncTs > 0
-        ? ['>=DATE_MODIFY' => date('Y-m-d\TH:i:s', $lastSyncTs)]
-        : [];
-    $select = array_merge(['ID', 'TITLE'], B24_BOOKING_FIELDS);
-
-    $allDeals = [];
-    $start    = 0;
-    do {
-        $items = b24wh('crm.deal.list', [
-            'filter' => $filter,
-            'select' => $select,
-            'order'  => ['ID' => 'ASC'],
-            'start'  => $start,
-        ]);
-        if (!is_array($items)) $items = [];
-        $allDeals = array_merge($allDeals, $items);
-        $start += 50;
-    } while (count($items) === 50 && $start < 1000);
-
-    logline('Deals fetched: ' . count($allDeals));
-
-    if (empty($allDeals)) {
-        storeWrite(LAST_SYNC_FILE, ['ts' => time()]);
-        logline('No changes');
+    if (empty($columnMap)) {
+        logline('ERROR: no columns in spreadsheet row 1, abort');
         return;
     }
 
-    // 5. Process each deal, collect affected cells
-    $affectedKeys = [];
+    // ── 2. Tech users ─────────────────────────────────────────────────────────
+    $techUsers = loadTechUsers($columnMap); // [userId => surname]
+    logline('Tech users: ' . json_encode($techUsers, JSON_UNESCAPED_UNICODE));
+    if (empty($techUsers)) {
+        logline('WARNING: no tech users matched column headers');
+        return;
+    }
 
-    foreach ($allDeals as $deal) {
-        $dealId = (string)($deal['ID'] ?? '');
-        if ($dealId === '') continue;
+    // ── 3. Calendar bookings ──────────────────────────────────────────────────
+    // Window: start of current month → end of month +2
+    $syncFrom = date('Y-m-01');
+    $syncTo   = date('Y-m-t', strtotime('+2 months'));
+    logline("Sync window: $syncFrom → $syncTo");
 
-        $title = (string)($deal['TITLE'] ?? '#' . $dealId);
-        $url   = 'https://' . $portal . '/crm/deal/details/' . $dealId . '/';
+    $bookings = fetchTechBookings($techUsers, $syncFrom, $syncTo);
+    logline('Bookings from calendar: ' . count($bookings));
 
-        $oldCells = $dealCells[$dealId] ?? [];
-        $newCells = parseBookings($deal, $resourceNames);
-
-        foreach (array_merge($oldCells, $newCells) as $pos) {
-            $affectedKeys[$pos['date'] . '|' . $pos['tech']] = true;
+    // ── 4. Active deals (for title→URL mapping) ───────────────────────────────
+    $portal   = (string)parse_url(B24_WEBHOOK_URL, PHP_URL_HOST);
+    $titleMap = []; // title => ['id' => ..., 'url' => ...]
+    $start    = 0;
+    do {
+        $items = b24wh('crm.deal.list', [
+            'filter' => ['STAGE_SEMANTIC_ID' => 'P'],  // active stages only
+            'select' => ['ID', 'TITLE'],
+            'order'  => ['ID' => 'DESC'],
+            'start'  => $start,
+        ]);
+        if (!is_array($items)) $items = [];
+        foreach ($items as $deal) {
+            $t = trim((string)($deal['TITLE'] ?? ''));
+            if ($t !== '' && !isset($titleMap[$t])) {
+                $id = (string)$deal['ID'];
+                $titleMap[$t] = ['id' => $id, 'url' => "https://{$portal}/crm/deal/details/{$id}/"];
+            }
         }
+        $start += 50;
+    } while (count($items) === 50 && $start < 2000);
+    logline('Active deals: ' . count($titleMap));
 
-        if (empty($newCells)) {
-            unset($dealCells[$dealId], $dealInfo[$dealId]);
-        } else {
-            $dealCells[$dealId] = $newCells;
-            $dealInfo[$dealId]  = ['title' => $title, 'url' => $url];
+    // ── 5. Build new assignments ──────────────────────────────────────────────
+    // Key: 'DD.MM.YYYY|Surname', value: [dealId => ['id', 'url', 'title']]
+    $newAssign = [];
+    $missed    = [];
+
+    foreach ($bookings as $b) {
+        $deal = $titleMap[$b['title']] ?? null;
+        if ($deal === null) {
+            if ($b['title'] !== '') $missed[$b['title']] = true;
+            continue;
+        }
+        $dealEntry = ['id' => $deal['id'], 'url' => $deal['url'], 'title' => $b['title']];
+
+        foreach (expandDates($b['date'], $b['dateTo']) as $date) {
+            $key = $date . '|' . $b['surname'];
+            $newAssign[$key][$deal['id']] = $dealEntry;
         }
     }
 
-    // 6. For each affected cell: ensure date row exists, build richText update
-    $updates = [];
+    if (!empty($missed)) {
+        logline('Titles not matched to active deals: ' . implode('; ', array_keys($missed)));
+    }
+    logline('Assignments: ' . count($newAssign));
 
-    foreach (array_keys($affectedKeys) as $key) {
-        [$date, $tech] = explode('|', $key, 2);
-        $col = $columnMap[$tech] ?? null;
-        if ($col === null) continue;
+    // ── 6. Stale cell clearing ────────────────────────────────────────────────
+    $oldAssign = storeRead($CELLS_STATE) ?? []; // previously written keys
+    $toRemove  = array_diff_key($oldAssign, $newAssign);
 
+    // ── 7. Insert missing date rows ───────────────────────────────────────────
+    $allDates = [];
+    foreach (array_keys($newAssign) as $key) {
+        $allDates[explode('|', $key, 2)[0]] = true;
+    }
+    ksort($allDates); // process in order so row-shift is correct
+
+    foreach (array_keys($allDates) as $date) {
         if (!isset($dateToRow[$date])) {
-            $insertPos = findInsertRow($date, $dateToRow);
-            // Shift rows >= insertPos down by 1
-            foreach ($dateToRow as $d => &$r) {
-                if ($r >= $insertPos) $r++;
+            $pos = findInsertRow($date, $dateToRow);
+            foreach ($dateToRow as &$r) {
+                if ($r >= $pos) $r++;
             }
             unset($r);
-            $sheets->insertDateRow($date, $insertPos);
-            $dateToRow[$date] = $insertPos;
-            logline("Row inserted: $date → $insertPos");
+            $sheets->insertDateRow($date, $pos);
+            $dateToRow[$date] = $pos;
+            logline("Row inserted: $date → $pos");
         }
-
-        $row  = $dateToRow[$date];
-        $rich = buildRichText($date, $tech, $dealCells, $dealInfo);
-        $updates[] = [
-            'cellRef' => $col . $row,
-            'text'    => $rich !== null ? $rich['text'] : '',
-            'runs'    => $rich !== null ? $rich['runs'] : [],
-        ];
     }
 
-    // 7. One batchUpdate call for all changes
+    // ── 8. Build Sheets batchUpdate ───────────────────────────────────────────
+    $updates = [];
+
+    // Clear stale cells
+    foreach (array_keys($toRemove) as $key) {
+        [$date, $surname] = explode('|', $key, 2);
+        $col = $columnMap[$surname] ?? null;
+        $row = $dateToRow[$date]   ?? null;
+        if ($col !== null && $row !== null) {
+            $updates[] = ['cellRef' => $col . $row, 'text' => '', 'runs' => []];
+        }
+    }
+
+    // Write new/updated cells
+    foreach ($newAssign as $key => $deals) {
+        [$date, $surname] = explode('|', $key, 2);
+        $col = $columnMap[$surname] ?? null;
+        $row = $dateToRow[$date]   ?? null;
+        if ($col === null || $row === null) continue;
+
+        $text = '';
+        $runs = [];
+        foreach ($deals as $d) {
+            if ($text !== '') $text .= "\n";
+            $runs[] = [
+                'startIndex' => mb_strlen($text, 'UTF-8'),
+                'format'     => ['link' => ['uri' => $d['url']]],
+            ];
+            $text .= $d['title'];
+        }
+        $updates[] = ['cellRef' => $col . $row, 'text' => $text, 'runs' => $runs];
+    }
+
     if (!empty($updates)) {
         $sheets->batchUpdate($updates);
-        logline('Cells updated: ' . count($updates));
+        logline('Cells updated: ' . count($updates) . ' (clear=' . count($toRemove) . ', write=' . count($newAssign) . ')');
+    } else {
+        logline('No cell changes');
     }
 
-    // 8. Persist state
+    // ── 9. Save state ─────────────────────────────────────────────────────────
+    storeWrite($CELLS_STATE, $newAssign);
     storeWrite(LAST_SYNC_FILE, ['ts' => time()]);
-    storeWrite(DEAL_CELLS_FILE, $dealCells);
-    storeWrite(DEAL_INFO_FILE,  $dealInfo);
     logline('State saved');
 }

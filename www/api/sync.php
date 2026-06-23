@@ -7,155 +7,78 @@ require_once __DIR__ . '/lib.php';
 require_once __DIR__ . '/b24.php';
 
 /**
- * Load resource maps from crm.deal.fields (cached).
- *
- * Returns [
- *   'sections' => ['calSectionId' => 'Surname'],  // resource section bookings
- *   'users'    => ['b24UserId'    => 'Surname'],  // employee (personal calendar) bookings
- * ]
+ * Load B24 active users whose LAST_NAME matches a spreadsheet column header.
+ * Returns [userId(int) => surname(string)].
  */
-function loadResourceNames(): array
+function loadTechUsers(array $columnMap): array
 {
-    $cached = storeRead(RESOURCE_NAMES_FILE);
-    // Old cache format was a flat array; new format has 'sections' key.
-    if (is_array($cached) && isset($cached['sections'])) return $cached;
-
-    $fields   = b24wh('crm.deal.fields', []);
-    $sections = [];
-    $users    = [];
-
-    foreach (B24_BOOKING_FIELDS as $fieldName) {
-        $field    = $fields[$fieldName] ?? null;
-        if (!$field) continue;
-        $resource = $field['settings']['RESOURCES']['resource'] ?? [];
-
-        foreach ($resource['SECTIONS'] ?? [] as $s) {
-            $id      = (string)($s['ID']   ?? '');
-            $rawName = trim((string)($s['NAME'] ?? ''));
-            if ($id === '' || $rawName === '') continue;
-            $sections[$id] = explode(' ', $rawName)[0];
-        }
-
-        // Employees added as B24 users in "Сотрудники" → stored in SELECTED_USERS.
-        // Their bookings create events in personal calendar (SECT_ID=0, OWNER_ID=userId).
-        foreach ($field['settings']['SELECTED_USERS'] ?? [] as $u) {
-            $id      = (string)($u['id']    ?? '');
-            $rawName = trim((string)($u['title'] ?? ''));
-            if ($id === '' || $rawName === '') continue;
-            $users[$id] = explode(' ', $rawName)[0];
+    $resp = b24wh('user.get', ['ACTIVE' => true]);
+    $map  = [];
+    foreach ((array)$resp as $u) {
+        $surname = trim((string)($u['LAST_NAME'] ?? ''));
+        if ($surname !== '' && isset($columnMap[$surname])) {
+            $map[(int)($u['ID'])] = $surname;
         }
     }
-
-    $maps = ['sections' => $sections, 'users' => $users];
-    storeWrite(RESOURCE_NAMES_FILE, $maps);
-    return $maps;
+    return $map;
 }
 
 /**
- * Get user's last name (фамилия) by B24 user ID via user.get.
- * Results are cached in-process to avoid duplicate API calls.
- */
-function resolveUserSurname(string $userId): ?string
-{
-    if ($userId === '' || $userId === '0') return null;
-    static $cache = [];
-    if (array_key_exists($userId, $cache)) return $cache[$userId];
-
-    try {
-        $resp = b24wh('user.get', ['ID' => $userId]);
-        $user = is_array($resp) ? ($resp[0] ?? null) : null;
-        $surname = trim((string)($user['LAST_NAME'] ?? ''));
-        return $cache[$userId] = ($surname !== '' ? $surname : null);
-    } catch (Throwable $e) {
-        return $cache[$userId] = null;
-    }
-}
-
-/**
- * Parse all booking fields from a deal.
- * Each UF resourcebooking field stores an array of calendar event IDs.
- * We fetch each event via calendar.event.getbyid to get DATE_FROM + technician identity.
+ * Fetch personal-calendar booking events for the given users in [from..to].
+ * Filters by EVENT_TYPE="#resourcebooking#".
  *
- * Technician is identified two ways:
- *  - SECT_ID ≠ 0 → resource section booking → look up in $resourceMaps['sections']
- *  - SECT_ID = 0 → personal calendar booking → look up OWNER_ID in $resourceMaps['users']
- *
- * @param array $deal         Deal data from crm.deal.list (uppercase field names)
- * @param array $resourceMaps ['sections' => [sectId => surname], 'users' => [userId => surname]]
- * @return array              [{date: 'DD.MM.YYYY', tech: 'Surname'}, ...]
+ * Returns array of:
+ *   ['date'    => 'DD.MM.YYYY',     // from DATE_FROM
+ *    'dateTo'  => 'DD.MM.YYYY',     // from DATE_TO (may equal date for same-day)
+ *    'surname' => 'Муха',
+ *    'title'   => 'Ч/К ул.Молодежная...']  // stripped from NAME
  */
-function parseBookings(array $deal, array $resourceMaps): array
+function fetchTechBookings(array $techUsers, string $from, string $to): array
 {
-    $sections = $resourceMaps['sections'] ?? [];
-    $users    = $resourceMaps['users']    ?? [];
-
-    $eventIds = [];
-    foreach (B24_BOOKING_FIELDS as $field) {
-        $raw = $deal[$field] ?? null;
-        if (!is_array($raw) || empty($raw)) continue;
-        foreach ($raw as $id) {
-            $eventId = (int)$id;
-            if ($eventId > 0) $eventIds[] = $eventId;
-        }
-    }
-
-    $cells = [];
-    foreach ($eventIds as $eventId) {
+    $result = [];
+    foreach ($techUsers as $userId => $surname) {
         try {
-            $event = b24wh('calendar.event.getbyid', ['id' => $eventId]);
+            $events = b24wh('calendar.event.get', [
+                'type'    => 'user',
+                'ownerId' => (string)$userId,
+                'from'    => $from,
+                'to'      => $to,
+            ]);
         } catch (Throwable $e) {
             continue;
         }
-        if (empty($event)) continue;
+        foreach ((array)$events as $event) {
+            if (($event['EVENT_TYPE'] ?? '') !== '#resourcebooking#') continue;
+            $rawFrom = trim((string)($event['DATE_FROM'] ?? ''));
+            if ($rawFrom === '') continue;
 
-        $sectId   = (string)($event['SECT_ID']   ?? '');
-        $ownerId  = (string)($event['OWNER_ID']  ?? '');
-        $dateFrom = (string)($event['DATE_FROM']  ?? '');
-        $dateTo   = (string)($event['DATE_TO']    ?? '');
+            // DATE_FROM: "24.06.2026 12:00:00" → keep "DD.MM.YYYY"
+            $date = substr($rawFrom, 0, 10);
+            if (!preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $date)) continue;
 
-        // Resource section event → look up by section ID.
-        // Personal calendar event (SECT_ID=0) → resolve user name via user.get (OWNER_ID).
-        if ($sectId !== '' && $sectId !== '0') {
-            $surname = $sections[$sectId] ?? null;
-        } else {
-            $surname = $users[$ownerId] ?? resolveUserSurname($ownerId);
-        }
+            $rawTo   = trim((string)($event['DATE_TO'] ?? ''));
+            $dateTo  = substr($rawTo, 0, 10);
+            if (!preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $dateTo)) $dateTo = $date;
 
-        if ($surname === null) continue;
+            // Strip "Бронирование: " prefix to get deal title
+            $name  = (string)($event['NAME'] ?? '');
+            $title = trim(preg_replace('/^Бронирование:\s*/u', '', $name));
 
-        $fromTs = strtotime($dateFrom);
-        if ($fromTs === false || $fromTs <= 0) continue;
-
-        $days = 1;
-        if ($dateTo !== '') {
-            $toTs = strtotime($dateTo);
-            if ($toTs !== false && $toTs > $fromTs) {
-                $days = max(1, (int)ceil(($toTs - $fromTs) / 86400));
-            }
-        }
-
-        for ($d = 0; $d < $days; $d++) {
-            $cells[] = ['date' => date('d.m.Y', $fromTs + $d * 86400), 'tech' => $surname];
+            $result[] = [
+                'date'    => $date,
+                'dateTo'  => $dateTo,
+                'surname' => $surname,
+                'title'   => $title,
+            ];
         }
     }
-
-    // Deduplicate
-    $seen   = [];
-    $unique = [];
-    foreach ($cells as $c) {
-        $k = $c['date'] . '|' . $c['tech'];
-        if (!isset($seen[$k])) {
-            $seen[$k] = true;
-            $unique[] = $c;
-        }
-    }
-    return $unique;
+    return $result;
 }
 
 /**
- * Read spreadsheet row-1 headers and build surname → column letter map.
+ * Read spreadsheet row-1 headers, build surname → column letter map.
  * E.g. ['Тусюк' => 'B', 'Муха' => 'D', 'Юрченков' => 'F'].
- * Matching is by first word of the header (surname), case-sensitive.
+ * Matching uses the first word (surname) of each header cell.
  */
 function loadColumnMap(GoogleSheets $sheets): array
 {
@@ -170,56 +93,10 @@ function loadColumnMap(GoogleSheets $sheets): array
 }
 
 /**
- * Build richText content for a cell: all deals currently at {date, tech}.
- * Returns ['text' => '...', 'runs' => [...]] or null if the cell is empty.
+ * Find the 1-based row where a new date should be inserted (sorted ascending order).
  *
  * @param string $date      'DD.MM.YYYY'
- * @param string $tech      Surname key from TECH_COLUMNS
- * @param array  $dealCells ['deal_id' => [{date,tech}, ...]]
- * @param array  $dealInfo  ['deal_id' => ['title' => ..., 'url' => ...]]
- */
-function buildRichText(string $date, string $tech, array $dealCells, array $dealInfo): ?array
-{
-    $dealsHere = [];
-    foreach ($dealCells as $dealId => $positions) {
-        foreach ((array)$positions as $pos) {
-            if (($pos['date'] ?? '') === $date && ($pos['tech'] ?? '') === $tech) {
-                $dealsHere[] = (string)$dealId;
-                break;
-            }
-        }
-    }
-
-    if (empty($dealsHere)) return null;
-
-    $text = '';
-    $runs = [];
-
-    foreach ($dealsHere as $dealId) {
-        $info  = $dealInfo[$dealId] ?? ['title' => '#' . $dealId, 'url' => ''];
-        $label = (string)($info['title'] ?? '#' . $dealId);
-        $url   = (string)($info['url']   ?? '');
-
-        if ($text !== '') $text .= "\n";
-
-        if ($url !== '') {
-            $runs[] = [
-                'startIndex' => mb_strlen($text, 'UTF-8'),
-                'format'     => ['link' => ['uri' => $url]],
-            ];
-        }
-        $text .= $label;
-    }
-
-    return ['text' => $text, 'runs' => $runs];
-}
-
-/**
- * Find the row number where a new date should be inserted (sorted order).
- * Returns the 1-based row to pass to insertDateRow().
- *
- * @param string $date       'DD.MM.YYYY'
- * @param array  $dateToRow  ['DD.MM.YYYY' => rowNum]
+ * @param array  $dateToRow ['DD.MM.YYYY' => rowNum]
  */
 function findInsertRow(string $date, array $dateToRow): int
 {
@@ -230,8 +107,7 @@ function findInsertRow(string $date, array $dateToRow): int
             : 0;
     };
 
-    $newTs = $toTs($date);
-    // Default: append after the last existing row
+    $newTs     = $toTs($date);
     $insertPos = empty($dateToRow) ? 2 : max(array_values($dateToRow)) + 1;
 
     foreach ($dateToRow as $d => $row) {
@@ -239,6 +115,25 @@ function findInsertRow(string $date, array $dateToRow): int
             $insertPos = $row;
         }
     }
-
     return $insertPos;
+}
+
+/**
+ * Expand a booking (possibly multi-day) into individual date strings.
+ *
+ * @return string[]  ['DD.MM.YYYY', ...]
+ */
+function expandDates(string $dateFrom, string $dateTo): array
+{
+    $p    = explode('.', $dateFrom);
+    $from = mktime(0, 0, 0, (int)$p[1], (int)$p[0], (int)$p[2]);
+    $q    = explode('.', $dateTo);
+    $to   = mktime(0, 0, 0, (int)$q[1], (int)$q[0], (int)$q[2]);
+    if ($to < $from) $to = $from;
+
+    $days = [];
+    for ($ts = $from; $ts <= $to; $ts += 86400) {
+        $days[] = date('d.m.Y', $ts);
+    }
+    return $days ?: [$dateFrom];
 }
