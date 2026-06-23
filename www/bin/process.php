@@ -188,13 +188,16 @@ function runJob(): void
 
         $text = '';
         $runs = [];
+        $num  = 1;
         foreach ($deals as $d) {
             if ($text !== '') $text .= "\n";
+            $prefix = count($deals) > 1 ? $num . '. ' : '';
             $runs[] = [
                 'startIndex' => mb_strlen($text, 'UTF-8'),
                 'format'     => ['link' => ['uri' => $d['url']]],
             ];
-            $text .= $d['title'];
+            $text .= $prefix . $d['title'];
+            $num++;
         }
         $updates[] = ['cellRef' => $col . $row, 'text' => $text, 'runs' => $runs];
     }
