@@ -1,6 +1,5 @@
 <?php
-// Diagnostic: use calendar.resource.booking.list — the correct API for
-// "Бронирование ресурсов" UF field type. Not calendar.event.*, not booking.v1.
+// Diagnostic: find resourceTypeIdList for calendar.resource.booking.list.
 if (php_sapi_name() !== 'cli') { http_response_code(403); exit('CLI only'); }
 
 require __DIR__ . '/../env.php';
@@ -8,89 +7,75 @@ require __DIR__ . '/../api/store.php';
 require __DIR__ . '/../api/lib.php';
 require __DIR__ . '/../api/b24.php';
 
-// 1. calendar.resource.list — get all resources (employees + cars)
-echo "=== calendar.resource.list ===\n";
+// 1. calendar.resource.list — with all fields to find typeId
+echo "=== calendar.resource.list (raw first item) ===\n";
 try {
     $res = b24wh('calendar.resource.list', []);
-    $list = $res['resources'] ?? $res ?? [];
-    if (empty($list)) {
-        echo "  (empty)\n";
-        echo "  raw: " . json_encode($res) . "\n";
-    } else {
-        foreach ((array)$list as $r) {
-            printf("  id=%-4s name=%s\n",
-                $r['ID'] ?? $r['id'] ?? '?',
-                $r['NAME'] ?? $r['name'] ?? json_encode($r)
-            );
-        }
+    $list = is_array($res) ? $res : [];
+    echo "  total: " . count($list) . "\n";
+    if (!empty($list)) {
+        echo "  first item (all fields): " . json_encode($list[0], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";
     }
 } catch (Throwable $e) {
     echo "  ERROR: " . $e->getMessage() . "\n";
+    $list = [];
 }
 
-// 2. calendar.resource.booking.list for June 2026
-echo "\n=== calendar.resource.booking.list (June 2026) ===\n";
+// 2. Try calendar.resource.booking.list with resource IDs as resourceTypeIdList
+$employeeIds = [35, 37, 39, 41, 43]; // Тусюк, Козлянко, Муха, Кузавко, Сержанов
+$allIds = [20, 22, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 73];
+
+echo "\n=== calendar.resource.booking.list (resourceTypeIdList = employee IDs) ===\n";
 try {
-    $res = b24wh('calendar.resource.booking.list', [
+    $r = b24wh('calendar.resource.booking.list', [
         'filter' => [
-            'DATE_FROM' => '2026-06-01',
-            'DATE_TO'   => '2026-06-30',
+            'resourceTypeIdList' => $employeeIds,
+            'dateFrom'           => '2026-06-01',
+            'dateTo'             => '2026-06-30',
         ],
     ]);
-    $bookings = $res['bookings'] ?? $res ?? [];
-    if (empty($bookings)) {
-        echo "  (empty)\n";
-        echo "  raw: " . json_encode($res) . "\n";
-    } else {
-        foreach ((array)$bookings as $b) {
-            printf("  id=%-6s RESOURCE_ID=%-4s SECTION_ID=%-4s DATE_FROM=%-22s NAME=%s\n",
-                $b['ID']          ?? $b['id']          ?? '?',
-                $b['RESOURCE_ID'] ?? $b['resource_id'] ?? '?',
-                $b['SECTION_ID']  ?? $b['section_id']  ?? '?',
-                $b['DATE_FROM']   ?? $b['date_from']   ?? '?',
-                mb_substr((string)($b['NAME'] ?? $b['name'] ?? ''), 0, 60)
-            );
-        }
-    }
+    echo "  raw: " . json_encode($r, JSON_UNESCAPED_UNICODE) . "\n";
 } catch (Throwable $e) {
     echo "  ERROR: " . $e->getMessage() . "\n";
 }
 
-// 3. calendar.resource.booking.list without filter — see what comes back
-echo "\n=== calendar.resource.booking.list (no filter) ===\n";
+echo "\n=== calendar.resource.booking.list (resourceTypeIdList = ALL resource IDs) ===\n";
 try {
-    $res = b24wh('calendar.resource.booking.list', []);
-    $bookings = $res['bookings'] ?? $res ?? [];
-    echo "  total: " . count((array)$bookings) . "\n";
-    foreach (array_slice((array)$bookings, 0, 5) as $b) {
-        echo "  " . json_encode($b) . "\n";
-    }
-    if (empty($bookings)) {
-        echo "  raw keys: " . implode(', ', array_keys((array)$res)) . "\n";
-        echo "  raw: " . json_encode($res) . "\n";
-    }
-} catch (Throwable $e) {
-    echo "  ERROR: " . $e->getMessage() . "\n";
-}
-
-// 4. Try with deal #887 filter
-echo "\n=== calendar.resource.booking.list (deal #887) ===\n";
-try {
-    $res = b24wh('calendar.resource.booking.list', [
+    $r = b24wh('calendar.resource.booking.list', [
         'filter' => [
-            'ENTITY_TYPE' => 'deal',
-            'ENTITY_ID'   => 887,
+            'resourceTypeIdList' => $allIds,
+            'dateFrom'           => '2026-06-01',
+            'dateTo'             => '2026-06-30',
         ],
     ]);
-    $bookings = $res['bookings'] ?? $res ?? [];
-    if (empty($bookings)) {
-        echo "  (empty)\n";
-        echo "  raw: " . json_encode($res) . "\n";
-    } else {
-        foreach ((array)$bookings as $b) {
-            echo "  " . json_encode($b) . "\n";
-        }
+    echo "  raw: " . json_encode($r, JSON_UNESCAPED_UNICODE) . "\n";
+} catch (Throwable $e) {
+    echo "  ERROR: " . $e->getMessage() . "\n";
+}
+
+// 3. Try alternative parameter name spellings
+echo "\n=== calendar.resource.booking.list (various param names) ===\n";
+$attempts = [
+    ['resourceIdList'     => $employeeIds],
+    ['RESOURCE_ID'        => $employeeIds],
+    ['resourceTypeIdList' => [1]],
+    ['resourceTypeIdList' => [2]],
+    ['resourceTypeIdList' => [3]],
+];
+foreach ($attempts as $filter) {
+    try {
+        $r = b24wh('calendar.resource.booking.list', ['filter' => $filter]);
+        echo "  filter=" . json_encode($filter) . " → " . json_encode($r, JSON_UNESCAPED_UNICODE) . "\n";
+    } catch (Throwable $e) {
+        echo "  filter=" . json_encode($filter) . " → ERROR: " . $e->getMessage() . "\n";
     }
+}
+
+// 4. calendar.resource.getFields — understand resource structure
+echo "\n=== calendar.resource.getFields ===\n";
+try {
+    $r = b24wh('calendar.resource.getFields', []);
+    echo "  " . json_encode($r, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";
 } catch (Throwable $e) {
     echo "  ERROR: " . $e->getMessage() . "\n";
 }
