@@ -239,12 +239,23 @@ final class GoogleSheets
             ]
         );
 
-        $range = rawurlencode(SHEETS_SHEET . '!A' . $rowNum);
-        httpJson('PUT',
-            "https://sheets.googleapis.com/v4/spreadsheets/{$this->spreadsheetId}/values/{$range}?valueInputOption=RAW",
+        // Write date + explicitly set non-bold (month separator above may be bold)
+        httpJson('POST',
+            "https://sheets.googleapis.com/v4/spreadsheets/{$this->spreadsheetId}:batchUpdate",
             [
                 'headers' => ["Authorization: Bearer {$token}", 'Content-Type: application/json'],
-                'body'    => (string)json_encode(['values' => [[$date]]]),
+                'body'    => (string)json_encode(['requests' => [[
+                    'updateCells' => [
+                        'rows'   => [['values' => [[
+                            'userEnteredValue'  => ['stringValue' => $date],
+                            'userEnteredFormat' => ['textFormat' => ['bold' => false]],
+                        ]]]],
+                        'fields' => 'userEnteredValue,userEnteredFormat.textFormat.bold',
+                        'range'  => ['sheetId' => $sheetId,
+                                     'startRowIndex' => $rowNum - 1, 'endRowIndex' => $rowNum,
+                                     'startColumnIndex' => 0, 'endColumnIndex' => 1],
+                    ],
+                ]]]),
             ]
         );
     }
