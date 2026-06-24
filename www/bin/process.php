@@ -156,9 +156,10 @@ function runJob(): void
     ksort($allDates); // process in order so row-shift is correct
 
     foreach (array_keys($allDates) as $date) {
-        $monthKey = dateToMonthKey($date);
+        $monthKey   = dateToMonthKey($date);
+        $minDatePos = null; // date must go at or after this row
 
-        // Insert month separator if this month has no header yet
+        // Insert month separator before the first date of a new month
         if ($monthKey !== '' && !isset($monthToRow[$monthKey])) {
             $mPos = findInsertRow($date, array_merge($dateToRow, $monthToRow));
             foreach ($dateToRow as &$r) { if ($r >= $mPos) $r++; }
@@ -166,11 +167,12 @@ function runJob(): void
             unset($r);
             $sheets->insertMonthRow(ruMonthLabel($date), $mPos);
             $monthToRow[$monthKey] = $mPos;
+            $minDatePos = $mPos + 1; // date must go AFTER the month header
             logline("Month row inserted: " . ruMonthLabel($date) . " → $mPos");
         }
 
         if (!isset($dateToRow[$date])) {
-            $pos = findInsertRow($date, $dateToRow);
+            $pos = max($minDatePos ?? 1, findInsertRow($date, $dateToRow));
             foreach ($dateToRow as &$r) { if ($r >= $pos) $r++; }
             foreach ($monthToRow as &$r) { if ($r >= $pos) $r++; }
             unset($r);

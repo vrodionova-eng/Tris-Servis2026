@@ -201,6 +201,7 @@ final class GoogleSheets
 
     /**
      * Insert a blank row at $rowNum (1-based), write $date string into column A.
+     * Explicitly sets white background to avoid inheriting grey from month separator rows.
      */
     public function insertDateRow(string $date, int $rowNum): void
     {
@@ -211,17 +212,30 @@ final class GoogleSheets
             "https://sheets.googleapis.com/v4/spreadsheets/{$this->spreadsheetId}:batchUpdate",
             [
                 'headers' => ["Authorization: Bearer {$token}", 'Content-Type: application/json'],
-                'body'    => (string)json_encode(['requests' => [[
-                    'insertDimension' => [
-                        'range' => [
-                            'sheetId'    => $sheetId,
-                            'dimension'  => 'ROWS',
-                            'startIndex' => $rowNum - 1,
-                            'endIndex'   => $rowNum,
+                'body'    => (string)json_encode(['requests' => [
+                    [
+                        'insertDimension' => [
+                            'range' => [
+                                'sheetId'    => $sheetId,
+                                'dimension'  => 'ROWS',
+                                'startIndex' => $rowNum - 1,
+                                'endIndex'   => $rowNum,
+                            ],
+                            'inheritFromBefore' => true,
                         ],
-                        'inheritFromBefore' => false,
                     ],
-                ]]]),
+                    [
+                        'repeatCell' => [
+                            'range'  => ['sheetId' => $sheetId,
+                                         'startRowIndex' => $rowNum - 1, 'endRowIndex' => $rowNum,
+                                         'startColumnIndex' => 0, 'endColumnIndex' => 26],
+                            'cell'   => ['userEnteredFormat' => [
+                                'backgroundColor' => ['red' => 1.0, 'green' => 1.0, 'blue' => 1.0],
+                            ]],
+                            'fields' => 'userEnteredFormat.backgroundColor',
+                        ],
+                    ],
+                ]]),
             ]
         );
 
