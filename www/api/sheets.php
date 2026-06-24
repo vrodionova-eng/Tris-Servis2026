@@ -101,10 +101,9 @@ final class GoogleSheets
     }
 
     /**
-     * Read column A, return date-string => 1-based row number.
-     * Only rows matching DD.MM.YYYY are included.
-     *
-     * @return array<string,int>
+     * Read column A. Returns:
+     *   'dates'  => ['DD.MM.YYYY' => rowNum]
+     *   'months' => ['YYYY-MM'    => rowNum]  (grey month-separator rows)
      */
     public function readColumnA(): array
     {
@@ -115,15 +114,88 @@ final class GoogleSheets
             ['headers' => ["Authorization: Bearer {$token}"]]
         );
 
-        $result = [];
+        $ruM    = self::RU_MONTHS_MAP;
+        $dates  = [];
+        $months = [];
+
         foreach ($resp['values'] ?? [] as $i => $row) {
             $v = trim((string)($row[0] ?? ''));
             if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $v)) {
-                $result[$v] = $i + 1;
+                $dates[$v] = $i + 1;
+            } elseif (preg_match('/^([А-ЯЁа-яё]+)\s+(\d{4})$/u', $v, $m)) {
+                $mn = $ruM[$m[1]] ?? null;
+                if ($mn !== null) {
+                    $months[sprintf('%04d-%02d', (int)$m[2], $mn)] = $i + 1;
+                }
             }
         }
-        return $result;
+        return ['dates' => $dates, 'months' => $months];
     }
+
+    /**
+     * Insert a grey month-separator row at $rowNum with label e.g. "Июнь 2026".
+     */
+    public function insertMonthRow(string $label, int $rowNum): void
+    {
+        $token   = $this->getToken();
+        $sheetId = $this->getSheetId($token);
+
+        // Insert blank row
+        httpJson('POST',
+            "https://sheets.googleapis.com/v4/spreadsheets/{$this->spreadsheetId}:batchUpdate",
+            [
+                'headers' => ["Authorization: Bearer {$token}", 'Content-Type: application/json'],
+                'body'    => (string)json_encode(['requests' => [[
+                    'insertDimension' => [
+                        'range'             => ['sheetId' => $sheetId, 'dimension' => 'ROWS',
+                                               'startIndex' => $rowNum - 1, 'endIndex' => $rowNum],
+                        'inheritFromBefore' => false,
+                    ],
+                ]]]),
+            ]
+        );
+
+        // Grey background for whole row + bold label in column A
+        httpJson('POST',
+            "https://sheets.googleapis.com/v4/spreadsheets/{$this->spreadsheetId}:batchUpdate",
+            [
+                'headers' => ["Authorization: Bearer {$token}", 'Content-Type: application/json'],
+                'body'    => (string)json_encode(['requests' => [
+                    [
+                        'repeatCell' => [
+                            'range'  => ['sheetId' => $sheetId,
+                                         'startRowIndex' => $rowNum - 1, 'endRowIndex' => $rowNum,
+                                         'startColumnIndex' => 0, 'endColumnIndex' => 26],
+                            'cell'   => ['userEnteredFormat' => [
+                                'backgroundColor' => ['red' => 0.85, 'green' => 0.85, 'blue' => 0.85],
+                            ]],
+                            'fields' => 'userEnteredFormat.backgroundColor',
+                        ],
+                    ],
+                    [
+                        'updateCells' => [
+                            'rows'   => [['values' => [[
+                                'userEnteredValue'  => ['stringValue' => $label],
+                                'userEnteredFormat' => [
+                                    'textFormat'      => ['bold' => true],
+                                    'backgroundColor' => ['red' => 0.85, 'green' => 0.85, 'blue' => 0.85],
+                                ],
+                            ]]]],
+                            'fields' => 'userEnteredValue,userEnteredFormat.textFormat.bold,userEnteredFormat.backgroundColor',
+                            'range'  => ['sheetId' => $sheetId,
+                                         'startRowIndex' => $rowNum - 1, 'endRowIndex' => $rowNum,
+                                         'startColumnIndex' => 0, 'endColumnIndex' => 1],
+                        ],
+                    ],
+                ]]),
+            ]
+        );
+    }
+
+    private const RU_MONTHS_MAP = [
+        'Январь'=>1,'Февраль'=>2,'Март'=>3,'Апрель'=>4,'Май'=>5,'Июнь'=>6,
+        'Июль'=>7,'Август'=>8,'Сентябрь'=>9,'Октябрь'=>10,'Ноябрь'=>11,'Декабрь'=>12,
+    ];
 
     // ── Write ─────────────────────────────────────────────────────────────────
 

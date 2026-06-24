@@ -67,9 +67,11 @@ function runJob(): void
     $CELLS_STATE = DATA_ROOT . '/cron-cells.php';
 
     // ── 1. Spreadsheet structure ──────────────────────────────────────────────
-    $sheets    = new GoogleSheets(SHEETS_ID);
-    $dateToRow = $sheets->readColumnA();
-    logline('Sheet rows: ' . count($dateToRow));
+    $sheets      = new GoogleSheets(SHEETS_ID);
+    $columnData  = $sheets->readColumnA();
+    $dateToRow   = $columnData['dates'];   // 'DD.MM.YYYY' => rowNum
+    $monthToRow  = $columnData['months'];  // 'YYYY-MM'    => rowNum
+    logline('Sheet rows: ' . count($dateToRow) . ', month headers: ' . count($monthToRow));
 
     $columnMap = loadColumnMap($sheets);
     logline('Columns: ' . json_encode($columnMap, JSON_UNESCAPED_UNICODE));
@@ -154,11 +156,23 @@ function runJob(): void
     ksort($allDates); // process in order so row-shift is correct
 
     foreach (array_keys($allDates) as $date) {
+        $monthKey = dateToMonthKey($date);
+
+        // Insert month separator if this month has no header yet
+        if ($monthKey !== '' && !isset($monthToRow[$monthKey])) {
+            $mPos = findInsertRow($date, array_merge($dateToRow, $monthToRow));
+            foreach ($dateToRow as &$r) { if ($r >= $mPos) $r++; }
+            foreach ($monthToRow as &$r) { if ($r >= $mPos) $r++; }
+            unset($r);
+            $sheets->insertMonthRow(ruMonthLabel($date), $mPos);
+            $monthToRow[$monthKey] = $mPos;
+            logline("Month row inserted: " . ruMonthLabel($date) . " → $mPos");
+        }
+
         if (!isset($dateToRow[$date])) {
             $pos = findInsertRow($date, $dateToRow);
-            foreach ($dateToRow as &$r) {
-                if ($r >= $pos) $r++;
-            }
+            foreach ($dateToRow as &$r) { if ($r >= $pos) $r++; }
+            foreach ($monthToRow as &$r) { if ($r >= $pos) $r++; }
             unset($r);
             $sheets->insertDateRow($date, $pos);
             $dateToRow[$date] = $pos;

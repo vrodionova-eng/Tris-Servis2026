@@ -118,6 +118,22 @@ function findInsertRow(string $date, array $dateToRow): int
     return $insertPos;
 }
 
+/** Convert 'DD.MM.YYYY' → 'YYYY-MM' month key. */
+function dateToMonthKey(string $date): string
+{
+    $p = explode('.', $date);
+    return count($p) === 3 ? $p[2] . '-' . $p[1] : '';
+}
+
+/** Return Russian month label for a date: 'DD.MM.YYYY' → 'Июнь 2026'. */
+function ruMonthLabel(string $date): string
+{
+    static $names = ['','Январь','Февраль','Март','Апрель','Май','Июнь',
+                     'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    $p = explode('.', $date);
+    return count($p) === 3 ? ($names[(int)$p[1]] . ' ' . $p[2]) : $date;
+}
+
 /**
  * Expand a booking (possibly multi-day) into individual date strings.
  *
