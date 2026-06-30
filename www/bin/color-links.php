@@ -32,6 +32,7 @@ require_once __DIR__ . '/../api/store.php';
 require_once __DIR__ . '/../api/lib.php';
 require_once __DIR__ . '/../api/b24.php';
 require_once __DIR__ . '/../api/sheets.php';
+require_once __DIR__ . '/../api/sync.php';
 
 $LOG_DIR   = DATA_ROOT . '/cron-logs';
 $LOCK_FILE = DATA_ROOT . '/color-links.lock';
