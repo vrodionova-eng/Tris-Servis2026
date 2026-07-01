@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /home/student -name \"*.png\" -type f 2>/dev/null | head -20)",
+      "Read(//home/student/**)"
+    ]
+  }
+}
