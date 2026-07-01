@@ -230,9 +230,17 @@ function runJob(): void
  */
 function resolveBookingDates(array $deals): array
 {
+    // Only brigade date fields (first element of each rule), NOT act file fields
+    $brigadeFields = [];
+    foreach (colorRules() as $rules) {
+        foreach ($rules as [$brigadeField, $actField]) {
+            $brigadeFields[$brigadeField] = true;
+        }
+    }
+
     $bookingIds = [];
     foreach ($deals as $deal) {
-        foreach (allUfFields() as $uf) {
+        foreach (array_keys($brigadeFields) as $uf) {
             $val = $deal[$uf] ?? [];
             if (is_array($val)) {
                 foreach ($val as $id) {
@@ -246,18 +254,19 @@ function resolveBookingDates(array $deals): array
     logline('Booking IDs: ' . implode(',', array_keys($bookingIds)));
 
     $map = [];
-    foreach (array_keys($bookingIds) as $id) {
+    foreach (array_keys($bookingIds) as $bid) {
         try {
-            $event = b24wh('calendar.event.getbyid', ['id' => $id]);
+            $event = b24wh('calendar.event.getbyid', ['id' => $bid]);
         } catch (Throwable $e) {
-            logline("  booking $id: error — " . $e->getMessage());
+            logline("  booking $bid: ERROR — " . $e->getMessage());
             continue;
         }
         $dateFrom = trim((string)($event['DATE_FROM'] ?? ''));
+        logline("  booking $bid: DATE_FROM=" . ($dateFrom !== '' ? $dateFrom : 'EMPTY'));
         if ($dateFrom !== '') {
-            $d = substr($dateFrom, 0, 10); // "DD.MM.YYYY"
+            $d = substr($dateFrom, 0, 10);
             if (preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $d, $m)) {
-                $map[$id] = $m[3] . '-' . $m[2] . '-' . $m[1]; // YYYY-MM-DD
+                $map[$bid] = $m[3] . '-' . $m[2] . '-' . $m[1];
             }
         }
     }
