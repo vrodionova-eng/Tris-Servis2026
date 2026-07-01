@@ -150,17 +150,6 @@ function runJob(): void
     foreach ($deals as $deal) {
         $dealId = (string)$deal['ID'];
         $color  = determineColor($deal, $categories, $bookingDates);
-        if ($color === null) {
-            $dbg = [
-                'id' => $dealId,
-                'cat_id' => $deal['CATEGORY_ID'] ?? '?',
-                'title' => mb_substr($deal['TITLE'] ?? '', 0, 60, 'UTF-8'),
-            ];
-            foreach (allUfFields() as $uf) {
-                $dbg[$uf] = $deal[$uf] ?? null;
-            }
-            logline('DEBUG no-color: ' . json_encode($dbg, JSON_UNESCAPED_UNICODE));
-        }
         if ($color !== null) {
             $colorMap[$dealId] = $color;
             if ($color === 'green') {
@@ -262,7 +251,6 @@ function resolveBookingDates(array $deals): array
             $d = substr($dateFrom, 0, 10); // "DD.MM.YYYY"
             if (preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $d, $m)) {
                 $map[$id] = $m[3] . '-' . $m[2] . '-' . $m[1]; // YYYY-MM-DD
-                logline("  booking $id → $d → {$map[$id]}");
             }
         }
     }
