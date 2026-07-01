@@ -139,14 +139,17 @@ function runJob(): void
         logline('Fetched deals: ' . count($deals));
     }
 
-    // ── 5. Determine colors ───────────────────────────────────────────────
+    // ── 5. Resolve booking IDs → dates ────────────────────────────────────
+    $bookingDates = resolveBookingDates($deals);
+    logline('Booking date map: ' . count($bookingDates) . ' entries');
+
+    // ── 6. Determine colors ───────────────────────────────────────────────
     $newGreen = [];
     $colorMap = [];
 
     foreach ($deals as $deal) {
         $dealId = (string)$deal['ID'];
-        $color  = determineColor($deal, $categories);
-        // ── debug: why no color?
+        $color  = determineColor($deal, $categories, $bookingDates);
         if ($color === null) {
             $dbg = [
                 'id' => $dealId,
@@ -173,12 +176,12 @@ function runJob(): void
     logline('Colors: green=' . count($newGreen) . ' persisted=' . count($greenState)
         . ', red=' . (count($colorMap) - count($newGreen) - count($greenState)));
 
-    // ── 6. Persist new greens ─────────────────────────────────────────────
+    // ── 7. Persist new greens ─────────────────────────────────────────────
     if (!empty($newGreen)) {
         storeWrite($COLOR_STATE, array_merge($greenState, $newGreen));
     }
 
-    // ── 7. Build batchUpdate ──────────────────────────────────────────────
+    // ── 8. Build batchUpdate ──────────────────────────────────────────────
     $sheets    = new GoogleSheets(SHEETS_ID);
     $colMap    = loadColumnMap($sheets);
     $dateToRow = $sheets->readColumnA()['dates'] ?? [];
@@ -225,6 +228,47 @@ function runJob(): void
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Resolve resource booking IDs → YYYY-MM-DD dates.
+ * Brigade UF fields store booking IDs (arrays of ints), not dates.
+ */
+function resolveBookingDates(array $deals): array
+{
+    $bookingIds = [];
+    foreach ($deals as $deal) {
+        foreach (allUfFields() as $uf) {
+            $val = $deal[$uf] ?? [];
+            if (is_array($val)) {
+                foreach ($val as $id) {
+                    if (is_int($id) && $id > 0) $bookingIds[(string)$id] = true;
+                }
+            }
+        }
+    }
+    if (empty($bookingIds)) return [];
+
+    logline('Booking IDs to resolve: ' . count($bookingIds) . ' — ' . implode(',', array_keys($bookingIds)));
+
+    $map = [];
+    foreach (array_keys($bookingIds) as $id) {
+        try {
+            $event = b24wh('calendar.event.getbyid', ['id' => $id]);
+        } catch (Throwable $e) {
+            logline("  booking $id: error — " . $e->getMessage());
+            continue;
+        }
+        $dateFrom = trim((string)($event['DATE_FROM'] ?? ''));
+        if ($dateFrom !== '') {
+            $d = substr($dateFrom, 0, 10); // "DD.MM.YYYY"
+            if (preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $d, $m)) {
+                $map[$id] = $m[3] . '-' . $m[2] . '-' . $m[1]; // YYYY-MM-DD
+                logline("  booking $id → $d → {$map[$id]}");
+            }
+        }
+    }
+    return $map;
+}
+
 function fetchCategoryMap(): array
 {
     try {
@@ -268,13 +312,27 @@ function fetchDealBatch(array $dealIds): array
 
 /**
  * Extract a clean YYYY-MM-DD date from a UF field value.
+ * Brigade UF fields store booking IDs (array of ints) — resolved via $bookingDates.
  * Handles "YYYY-MM-DD", "YYYY-MM-DD HH:MM:SS", "DD.MM.YYYY", and array values.
  */
-function dateFromUf(array $deal, string $ufField): string
+function dateFromUf(array $deal, string $ufField, array $bookingDates = []): string
 {
     $val = $deal[$ufField] ?? null;
     if ($val === null || $val === '') return '';
-    $raw = is_string($val) ? $val : (is_array($val) ? ($val['value'] ?? '') : '');
+
+    // Booking IDs: array of ints → resolve via booking date map
+    if (is_array($val) && !empty($val)) {
+        $earliest = '';
+        foreach ($val as $id) {
+            if (is_int($id) && isset($bookingDates[$id])) {
+                $d = $bookingDates[$id];
+                if ($earliest === '' || $d < $earliest) $earliest = $d;
+            }
+        }
+        return $earliest;
+    }
+
+    $raw = is_string($val) ? $val : '';
     $raw = trim((string)$raw);
     if ($raw === '') return '';
     if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $raw, $m)) return $m[1];
@@ -311,7 +369,7 @@ function actFilled(array $deal, string $actField): bool
  * Determine link color for a deal.
  * Returns 'green', 'red', or null (no rule matched — leave default).
  */
-function determineColor(array $deal, array $categories): ?string
+function determineColor(array $deal, array $categories, array $bookingDates = []): ?string
 {
     $today = date('Y-m-d');
     $catId = (int)($deal['CATEGORY_ID'] ?? -1);
@@ -331,7 +389,7 @@ function determineColor(array $deal, array $categories): ?string
     if ($rules === null) return null;
 
     foreach ($rules as [$brigadeField, $actField]) {
-        $date = dateFromUf($deal, $brigadeField);
+        $date = dateFromUf($deal, $brigadeField, $bookingDates);
         if ($date === '' || $date > $today) continue;
         // Date has arrived or passed — check the act file
         return actFilled($deal, $actField) ? 'green' : 'red';
