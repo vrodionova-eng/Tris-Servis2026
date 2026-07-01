@@ -377,12 +377,21 @@ function determineColor(array $deal, array $categories, array $bookingDates = []
     }
     if ($rules === null) return null;
 
+    // Collect latest date per rule; bail out if ANY future booking exists
+    $checks = []; // [[date, actField], ...]
     foreach ($rules as [$brigadeField, $actField]) {
         $date = dateFromUf($deal, $brigadeField, $bookingDates);
-        if ($date === '' || $date > $today) continue;
-        // Date has arrived or passed — check the act file
-        return actFilled($deal, $actField) ? 'green' : 'red';
+        if ($date === '') continue;
+        // If ANY brigade field has a future booking → don't color yet
+        if ($date > $today) return null;
+        $checks[] = [$date, $actField];
     }
+    if (empty($checks)) return null;
 
-    return null;
+    // All dates are ≤ today — check all corresponding acts
+    $allGreen = true;
+    foreach ($checks as [$date, $actField]) {
+        if (!actFilled($deal, $actField)) $allGreen = false;
+    }
+    return $allGreen ? 'green' : 'red';
 }
