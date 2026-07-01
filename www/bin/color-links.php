@@ -132,18 +132,16 @@ function runJob(): void
     $categories = fetchCategoryMap();
     logline('Categories: ' . json_encode(array_keys($categories), JSON_UNESCAPED_UNICODE));
 
-    // ── 4. Build deal→latestSheetDate from cron-cells state ───────────────
+    // ── 4. Build deal→allSheetDates from cron-cells state ────────────────
     //     Key: 'DD.MM.YYYY|Surname', value: [dealId => ...]
-    $dealSheetDate = [];
+    //     A deal can appear on multiple dates (different brigade fields).
+    $dealAllDates = [];
     foreach ($state as $key => $deals) {
         $d = explode('|', $key, 2)[0]; // DD.MM.YYYY
         if (!preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $d, $m)) continue;
         $ymd = $m[3] . '-' . $m[2] . '-' . $m[1]; // YYYY-MM-DD
         foreach ($deals as $dealId => $info) {
-            $id = (string)$dealId;
-            if (!isset($dealSheetDate[$id]) || $ymd > $dealSheetDate[$id]) {
-                $dealSheetDate[$id] = $ymd;
-            }
+            $dealAllDates[(string)$dealId][] = $ymd;
         }
     }
 
@@ -160,15 +158,7 @@ function runJob(): void
 
     foreach ($deals as $deal) {
         $dealId = (string)$deal['ID'];
-        $color  = determineColor($deal, $categories, $dealSheetDate);
-        if ($color === null) {
-            $dbg = ['id' => $dealId, 'cat_id' => $deal['CATEGORY_ID'] ?? '?',
-                    'sheet_date' => $dealSheetDate[$dealId] ?? 'none'];
-            foreach (allUfFields() as $uf) {
-                $dbg[$uf] = $deal[$uf] ?? null;
-            }
-            logline('NO-COLOR: ' . json_encode($dbg, JSON_UNESCAPED_UNICODE));
-        }
+        $color  = determineColor($deal, $categories, $dealAllDates);
         if ($color !== null) {
             $colorMap[$dealId] = $color;
             if ($color === 'green') {
@@ -314,14 +304,10 @@ function actFilled(array $deal, string $actField): bool
  * Determine link color for a deal.
  * Returns 'green', 'red', or null (no rule matched — leave default).
  */
-function determineColor(array $deal, array $categories, array $dealSheetDate = []): ?string
+function determineColor(array $deal, array $categories, array $dealAllDates = []): ?string
 {
     $today  = date('Y-m-d');
     $dealId = (string)($deal['ID'] ?? '');
-
-    // Get the latest booking date for this deal from the sheet state
-    $date = $dealSheetDate[$dealId] ?? '';
-    if ($date === '' || $date > $today) return null; // future or unknown
 
     $catId = (int)($deal['CATEGORY_ID'] ?? -1);
     $cat   = $categories[$catId] ?? null;
@@ -339,10 +325,25 @@ function determineColor(array $deal, array $categories, array $dealSheetDate = [
     }
     if ($rules === null) return null;
 
-    // Date has arrived — check all acts for this funnel
-    $allGreen = true;
+    // Get the latest sheet date for this deal (across all technicians)
+    $dates = $dealAllDates[$dealId] ?? [];
+    $dealDate = '';
+    foreach ($dates as $d) {
+        if ($d > $dealDate) $dealDate = $d;
+    }
+    if ($dealDate === '' || $dealDate > $today) return null; // no date or all future
+
+    // Check each brigade→act pair independently.
+    // Only pairs where the brigade field has booking IDs (non-empty) are checked.
+    $anyChecked = false;
+    $allGreen   = true;
     foreach ($rules as [$brigadeField, $actField]) {
+        $val = $deal[$brigadeField] ?? [];
+        if (!is_array($val) || empty($val)) continue; // no booking → skip this pair
+        $anyChecked = true;
         if (!actFilled($deal, $actField)) $allGreen = false;
     }
+
+    if (!$anyChecked) return null;
     return $allGreen ? 'green' : 'red';
 }
