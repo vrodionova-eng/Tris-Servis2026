@@ -297,12 +297,15 @@ function actFilled(array $deal, string $actField): bool
     if (is_int($val) && $val > 0) return true;
     if (is_string($val) && trim($val) !== '' && trim($val) !== '0') return true;
     if (is_array($val) && !empty($val)) {
-        // Check first element — if it's an array with ID, or a non-zero int
+        // Single file object: {"id":6137,"showUrl":"...","downloadUrl":"..."}
+        if (isset($val['id']) && (int)$val['id'] > 0) return true;
+        // Array of files: [{"id":6141,...}, ...]
         $first = $val[0] ?? null;
-        if ($first === null) return false;
-        if (is_int($first) && $first > 0) return true;
-        if (is_array($first) && !empty($first['id'] ?? $first['ID'] ?? '')) return true;
-        if (is_string($first) && trim($first) !== '') return true;
+        if ($first !== null) {
+            if (is_int($first) && $first > 0) return true;
+            if (is_array($first) && !empty($first['id'] ?? $first['ID'] ?? '')) return true;
+            if (is_string($first) && trim($first) !== '') return true;
+        }
     }
     return false;
 }
