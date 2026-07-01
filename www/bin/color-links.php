@@ -75,27 +75,33 @@ logline('=== color-links end (' . round(microtime(true) - $started, 2) . 's) ===
  * brigadeDateField — UF_CRM_* containing the brigade date
  * actField        — UF_CRM_* containing the file (act document)
  */
-define('COLOR_RULES', [
-    'сервисн' => [
-        ['UF_CRM_1750775559215', 'UF_CRM_1770287721239'],  // бригада → Акт подписанный
-        ['UF_CRM_1751015039070', 'UF_CRM_1760359069161'],  // запчасти → Акт выставленный темп
-    ],
-    'планов' => [
-        ['UF_CRM_1750920048783', 'UF_CRM_1758266160075'],  // ТО-1 → Акт ТО-1
-        ['UF_CRM_1750920231839', 'UF_CRM_1758530158437'],  // ТО-2 → Акт ТО-2
-    ],
-]);
+function colorRules(): array
+{
+    return [
+        'сервисн' => [
+            ['UF_CRM_1750775559215', 'UF_CRM_1770287721239'],
+            ['UF_CRM_1751015039070', 'UF_CRM_1760359069161'],
+        ],
+        'планов' => [
+            ['UF_CRM_1750920048783', 'UF_CRM_1758266160075'],
+            ['UF_CRM_1750920231839', 'UF_CRM_1758530158437'],
+        ],
+    ];
+}
 
-define('ALL_UF_FIELDS', [
-    'UF_CRM_1750775559215',
-    'UF_CRM_1751015039070',
-    'UF_CRM_1750920048783',
-    'UF_CRM_1750920231839',
-    'UF_CRM_1770287721239',
-    'UF_CRM_1760359069161',
-    'UF_CRM_1758266160075',
-    'UF_CRM_1758530158437',
-]);
+function allUfFields(): array
+{
+    return [
+        'UF_CRM_1750775559215',
+        'UF_CRM_1751015039070',
+        'UF_CRM_1750920048783',
+        'UF_CRM_1750920231839',
+        'UF_CRM_1770287721239',
+        'UF_CRM_1760359069161',
+        'UF_CRM_1758266160075',
+        'UF_CRM_1758530158437',
+    ];
+}
 
 function runJob(): void
 {
@@ -229,7 +235,7 @@ function fetchCategoryMap(): array
 function fetchDealBatch(array $dealIds): array
 {
     if (empty($dealIds)) return [];
-    $select = array_merge(['ID', 'TITLE', 'CATEGORY_ID'], ALL_UF_FIELDS);
+    $select = array_merge(['ID', 'TITLE', 'CATEGORY_ID'], allUfFields());
 
     $all    = [];
     $chunks = array_chunk(array_unique($dealIds), 50);
@@ -303,7 +309,7 @@ function determineColor(array $deal, array $categories): ?string
 
     // Find matching rule set for this category
     $rules = null;
-    foreach (COLOR_RULES as $keyword => $ruleSet) {
+    foreach (colorRules() as $keyword => $ruleSet) {
         if (mb_strpos($catName, $keyword) !== false) {
             $rules = $ruleSet;
             break;
