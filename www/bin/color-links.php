@@ -236,8 +236,6 @@ function resolveBookingDates(array $deals): array
     }
     if (empty($bookingIds)) return [];
 
-    logline('Booking IDs to resolve: ' . count($bookingIds) . ' — ' . implode(',', array_keys($bookingIds)));
-
     $map = [];
     foreach (array_keys($bookingIds) as $id) {
         try {
@@ -378,12 +376,11 @@ function determineColor(array $deal, array $categories, array $bookingDates = []
     if ($rules === null) return null;
 
     // Collect latest date per rule; bail out if ANY future booking exists
-    $checks = []; // [[date, actField], ...]
+    $checks = [];
     foreach ($rules as [$brigadeField, $actField]) {
         $date = dateFromUf($deal, $brigadeField, $bookingDates);
         if ($date === '') continue;
-        // If ANY brigade field has a future booking → don't color yet
-        if ($date > $today) return null;
+        if ($date > $today) return null;   // future booking — don't color yet
         $checks[] = [$date, $actField];
     }
     if (empty($checks)) return null;
