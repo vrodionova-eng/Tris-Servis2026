@@ -75,7 +75,7 @@ logline('=== color-links end (' . round(microtime(true) - $started, 2) . 's) ===
  * brigadeDateField — UF_CRM_* containing the brigade date
  * actField        — UF_CRM_* containing the file (act document)
  */
-const COLOR_RULES = [
+define('COLOR_RULES', [
     'сервисн' => [
         ['UF_CRM_1750775559215', 'UF_CRM_1770287721239'],  // бригада → Акт подписанный
         ['UF_CRM_1751015039070', 'UF_CRM_1760359069161'],  // запчасти → Акт выставленный темп
@@ -84,9 +84,9 @@ const COLOR_RULES = [
         ['UF_CRM_1750920048783', 'UF_CRM_1758266160075'],  // ТО-1 → Акт ТО-1
         ['UF_CRM_1750920231839', 'UF_CRM_1758530158437'],  // ТО-2 → Акт ТО-2
     ],
-];
+]);
 
-const ALL_UF_FIELDS = [
+define('ALL_UF_FIELDS', [
     'UF_CRM_1750775559215',
     'UF_CRM_1751015039070',
     'UF_CRM_1750920048783',
@@ -95,7 +95,7 @@ const ALL_UF_FIELDS = [
     'UF_CRM_1760359069161',
     'UF_CRM_1758266160075',
     'UF_CRM_1758530158437',
-];
+]);
 
 function runJob(): void
 {
