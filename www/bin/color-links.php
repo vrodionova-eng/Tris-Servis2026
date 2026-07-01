@@ -309,15 +309,16 @@ function dateFromUf(array $deal, string $ufField, array $bookingDates = []): str
     if ($val === null || $val === '') return '';
 
     // Booking IDs: array of ints → resolve via booking date map
+    // Use the LATEST (most recent) booking date — the last scheduled visit is what matters.
     if (is_array($val) && !empty($val)) {
-        $earliest = '';
+        $latest = '';
         foreach ($val as $id) {
             if (is_int($id) && isset($bookingDates[$id])) {
                 $d = $bookingDates[$id];
-                if ($earliest === '' || $d < $earliest) $earliest = $d;
+                if ($latest === '' || $d > $latest) $latest = $d;
             }
         }
-        return $earliest;
+        return $latest;
     }
 
     $raw = is_string($val) ? $val : '';
