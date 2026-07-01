@@ -221,10 +221,11 @@ function fetchCategoryMap(): array
         logline('fetchCategoryMap error: ' . $e->getMessage());
         return [];
     }
-    $map = [];
-    foreach ((array)$items as $cat) {
-        $id   = (int)($cat['ID'] ?? 0);
-        $name = trim((string)($cat['NAME'] ?? ''));
+    $cats = is_array($items) ? ($items['categories'] ?? $items) : [];
+    $map  = [];
+    foreach ((array)$cats as $cat) {
+        $id   = (int)($cat['id'] ?? $cat['ID'] ?? 0);
+        $name = trim((string)($cat['name'] ?? $cat['NAME'] ?? ''));
         if ($id > 0 && $name !== '') {
             $map[$id] = ['id' => $id, 'name' => $name];
         }
