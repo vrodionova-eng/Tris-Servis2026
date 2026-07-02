@@ -159,6 +159,18 @@ function runJob(): void
     foreach ($deals as $deal) {
         $dealId = (string)$deal['ID'];
         $color  = determineColor($deal, $categories, $dealAllDates);
+        if ($color === null) {
+            $dates = $dealAllDates[$dealId] ?? [];
+            $dbg = [
+                'id' => $dealId,
+                'cat_id' => $deal['CATEGORY_ID'] ?? '?',
+                'all_dates' => $dates,
+            ];
+            foreach (allUfFields() as $uf) {
+                $dbg[$uf] = json_encode($deal[$uf] ?? null, JSON_UNESCAPED_UNICODE);
+            }
+            logline('NO-COLOR: ' . json_encode($dbg, JSON_UNESCAPED_UNICODE));
+        }
         if ($color !== null) {
             $colorMap[$dealId] = $color;
             if ($color === 'green') {
