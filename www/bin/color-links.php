@@ -186,10 +186,7 @@ function runJob(): void
     logline('Colors: green=' . count($newGreen) . ' persisted=' . count($greenState)
         . ', red=' . (count($colorMap) - count($newGreen) - count($greenState)));
 
-    // ── 7. Save ALL colors for process.php to read ───────────────────────
-    storeWrite(DATA_ROOT . '/link-colors.php', $colorMap);
-
-    // ── 8. Persist new greens (permanent cache) ──────────────────────────
+    // ── 7. Persist new greens (permanent cache) ──────────────────────────
     if (!empty($newGreen)) {
         storeWrite($COLOR_STATE, array_merge($greenState, $newGreen));
     }

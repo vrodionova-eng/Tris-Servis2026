@@ -144,11 +144,15 @@ function runJob(): void
     }
     logline('Assignments: ' . count($newAssign));
 
-    // ── 6. Stale cell clearing ────────────────────────────────────────────────
+    // ── 6. Determine link colors (every run, so colors are fresh) ──────────────
+    $linkColors = determineLinkColors($newAssign);
+    storeWrite(DATA_ROOT . '/link-colors.php', $linkColors);
+
+    // ── 7. Stale cell clearing ────────────────────────────────────────────────
     $oldAssign = storeRead($CELLS_STATE) ?? []; // previously written keys
     $toRemove  = array_diff_key($oldAssign, $newAssign);
 
-    // ── 7. Insert missing date rows ───────────────────────────────────────────
+    // ── 8. Insert missing date rows ───────────────────────────────────────────
     $allDates = [];
     foreach (array_keys($newAssign) as $key) {
         $allDates[explode('|', $key, 2)[0]] = true;
@@ -182,7 +186,7 @@ function runJob(): void
         }
     }
 
-    // ── 8. Build Sheets batchUpdate ───────────────────────────────────────────
+    // ── 9. Build Sheets batchUpdate ───────────────────────────────────────────
     $updates = [];
 
     // Clear stale cells
@@ -235,8 +239,156 @@ function runJob(): void
         logline('No cell changes');
     }
 
-    // ── 9. Save state ─────────────────────────────────────────────────────────
+    // ── 10. Save state ────────────────────────────────────────────────────────
     storeWrite($CELLS_STATE, $newAssign);
     storeWrite(LAST_SYNC_FILE, ['ts' => time()]);
     logline('State saved');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Link color helpers — runs every cycle so colors are always fresh.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function determineLinkColors(array $newAssign): array
+{
+    $allDealIds = [];
+    foreach ($newAssign as $deals) {
+        foreach ($deals as $d) {
+            $allDealIds[(string)$d['id']] = true;
+        }
+    }
+    if (empty($allDealIds)) return [];
+
+    $greenState = storeRead(DATA_ROOT . '/deal-colors.php') ?? [];
+    $toCheck    = array_diff_key($allDealIds, $greenState);
+    logline('Link colors: green=' . count($greenState) . ', to-check=' . count($toCheck));
+
+    // Already-green deals → green
+    $colors = [];
+    foreach ($greenState as $id => $_) {
+        $colors[$id] = 'green';
+    }
+
+    if (empty($toCheck)) return $colors;
+
+    // Fetch categories and deals with UF fields
+    $categories = [];
+    try {
+        $cats = b24wh('crm.category.list', ['entityTypeId' => 2]);
+        foreach ((array)((is_array($cats) ? ($cats['categories'] ?? $cats) : [])) as $c) {
+            $id   = (int)($c['id'] ?? $c['ID'] ?? 0);
+            $name = trim((string)($c['name'] ?? $c['NAME'] ?? ''));
+            if ($id > 0 && $name !== '') $categories[$id] = ['id' => $id, 'name' => $name];
+        }
+    } catch (Throwable $e) {
+        logline('Link colors: category fetch error — ' . $e->getMessage());
+    }
+
+    $ufFields = [
+        'UF_CRM_1750775559215', 'UF_CRM_1751015039070',
+        'UF_CRM_1750920048783', 'UF_CRM_1750920231839',
+        'UF_CRM_1770287721239', 'UF_CRM_1760359069161',
+        'UF_CRM_1758266160075', 'UF_CRM_1758530158437',
+    ];
+
+    // Build deal→dates from newAssign
+    $dealAllDates = [];
+    foreach ($newAssign as $key => $deals) {
+        $d = explode('|', $key, 2)[0];
+        if (!preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $d, $m)) continue;
+        $ymd = $m[3] . '-' . $m[2] . '-' . $m[1];
+        foreach ($deals as $di) {
+            $dealAllDates[(string)$di['id']][] = $ymd;
+        }
+    }
+
+    // Fetch deals
+    $select = array_merge(['ID', 'TITLE', 'CATEGORY_ID'], $ufFields);
+    $deals  = [];
+    foreach (array_chunk(array_keys($toCheck), 50) as $chunk) {
+        try {
+            $items = b24wh('crm.deal.list', ['filter' => ['ID' => $chunk], 'select' => $select]);
+            if (is_array($items)) $deals = array_merge($deals, $items);
+        } catch (Throwable $e) {
+            logline('Link colors: deal fetch error — ' . $e->getMessage());
+        }
+    }
+
+    $today = date('Y-m-d');
+    $rules = [
+        'сервисн' => [
+            ['UF_CRM_1750775559215', 'UF_CRM_1770287721239'],
+            ['UF_CRM_1751015039070', 'UF_CRM_1760359069161'],
+        ],
+        'планов' => [
+            ['UF_CRM_1750920048783', 'UF_CRM_1758266160075'],
+            ['UF_CRM_1750920231839', 'UF_CRM_1758530158437'],
+        ],
+    ];
+
+    foreach ($deals as $deal) {
+        $dealId = (string)$deal['ID'];
+        $color  = null;
+
+        // Latest date for this deal
+        $dates = $dealAllDates[$dealId] ?? [];
+        $dealDate = '';
+        foreach ($dates as $dt) { if ($dt > $dealDate) $dealDate = $dt; }
+
+        if ($dealDate !== '' && $dealDate <= $today) {
+            $catId   = (int)($deal['CATEGORY_ID'] ?? -1);
+            $cat     = $categories[$catId] ?? null;
+            if ($cat !== null) {
+                $catName = mb_strtolower(trim($cat['name']));
+                $catRules = null;
+                foreach ($rules as $kw => $rs) {
+                    if (mb_strpos($catName, $kw) !== false) { $catRules = $rs; break; }
+                }
+                if ($catRules !== null) {
+                    $anyChecked = false;
+                    $allGreen   = true;
+                    foreach ($catRules as [$brigadeField, $actField]) {
+                        $val = $deal[$brigadeField] ?? [];
+                        if (!is_array($val) || empty($val)) continue;
+                        $anyChecked = true;
+                        if (!actFilledP($deal, $actField)) $allGreen = false;
+                    }
+                    if ($anyChecked) {
+                        $color = $allGreen ? 'green' : 'red';
+                    }
+                }
+            }
+        }
+
+        if ($color === 'green') {
+            $colors[$dealId] = 'green';
+            $greenState[$dealId] = true;
+        } elseif ($color === 'red') {
+            $colors[$dealId] = 'red';
+        }
+    }
+
+    // Persist greens
+    storeWrite(DATA_ROOT . '/deal-colors.php', $greenState);
+    logline('Link colors: total=' . count($colors));
+
+    return $colors;
+}
+
+function actFilledP(array $deal, string $actField): bool
+{
+    $val = $deal[$actField] ?? null;
+    if ($val === null) return false;
+    if (is_int($val) && $val > 0) return true;
+    if (is_string($val) && trim($val) !== '' && trim($val) !== '0') return true;
+    if (is_array($val) && !empty($val)) {
+        if (isset($val['id']) && (int)$val['id'] > 0) return true;
+        $first = $val[0] ?? null;
+        if ($first !== null) {
+            if (is_int($first) && $first > 0) return true;
+            if (is_array($first) && !empty($first['id'] ?? $first['ID'] ?? '')) return true;
+            if (is_string($first) && trim($first) !== '') return true;
+        }
+    }
+    return false;
 }
