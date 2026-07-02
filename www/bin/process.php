@@ -195,6 +195,9 @@ function runJob(): void
         }
     }
 
+    // Read link colors if available
+    $linkColors = storeRead(DATA_ROOT . '/link-colors.php') ?? [];
+
     // Write new/updated cells
     foreach ($newAssign as $key => $deals) {
         [$date, $surname] = explode('|', $key, 2);
@@ -208,9 +211,16 @@ function runJob(): void
         foreach ($deals as $d) {
             if ($text !== '') $text .= "\n";
             $prefix = $num . '. ';
+            $format = ['link' => ['uri' => $d['url']]];
+            $color  = $linkColors[(string)$d['id']] ?? null;
+            if ($color === 'green') {
+                $format['foregroundColor'] = ['red' => 0.0, 'green' => 0.5, 'blue' => 0.0];
+            } elseif ($color === 'red') {
+                $format['foregroundColor'] = ['red' => 0.7, 'green' => 0.0, 'blue' => 0.0];
+            }
             $runs[] = [
                 'startIndex' => mb_strlen($text, 'UTF-8'),
-                'format'     => ['link' => ['uri' => $d['url']]],
+                'format'     => $format,
             ];
             $text .= $prefix . $d['title'];
             $num++;
