@@ -216,7 +216,7 @@ function resolveUserIdFromAuth(string $authId, string $domain): ?string {
  * Webhook-based B24 REST call (server-side cron, no OAuth needed).
  * Returns $response['result'] stripped of the wrapper.
  */
-function b24wh(string $method, array $params = []): array {
+function b24wh(string $method, array $params = []) {
     if (!defined('B24_WEBHOOK_URL') || B24_WEBHOOK_URL === '') {
         throw new \RuntimeException('B24_WEBHOOK_URL не задан в env.php');
     }

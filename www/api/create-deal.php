@@ -122,7 +122,7 @@ $dealFields = [
 $dealId = null;
 try {
     $result = b24wh('crm.deal.add', ['fields' => $dealFields, 'params' => ['REGISTER_SONET_EVENT' => 'N']]);
-    $dealId = (int)(is_array($result) ? ($result['ID'] ?? $result['id'] ?? 0) : 0);
+    $dealId = (int)(is_array($result) ? ($result['ID'] ?? $result['id'] ?? 0) : $result);
 } catch (Throwable $e) {
     logError('crm.deal.add error: ' . $e->getMessage());
     respond(false, ['error' => 'Failed to create deal: ' . $e->getMessage()]);
