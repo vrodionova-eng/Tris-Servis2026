@@ -155,11 +155,12 @@ foreach (FUNNEL_FIELDS[$funnel] as $key) {
             $event = b24wh('calendar.event.add', [
                 'type'        => 'user',
                 'ownerId'     => $userId,
+                'section'     => 1, // personal
                 'name'        => $eventName,
                 'description' => $eventName,
-                'date_from'   => $dateFrom,
-                'date_to'     => $dateTo,
-                'skip_time'   => 'Y',
+                'from'        => $dateFrom,
+                'to'          => $dateTo,
+                'skip_time'   => 'N',
                 'event_type'  => '#resourcebooking#',
             ]);
             $eventId = (int)(is_array($event) ? ($event['ID'] ?? $event['id'] ?? 0) : 0);
