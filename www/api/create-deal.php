@@ -155,7 +155,6 @@ foreach (FUNNEL_FIELDS[$funnel] as $key) {
             $event = b24wh('calendar.event.add', [
                 'type'        => 'user',
                 'ownerId'     => $userId,
-                'section'     => 1, // personal
                 'name'        => $eventName,
                 'description' => $eventName,
                 'from'        => $dateFrom,
