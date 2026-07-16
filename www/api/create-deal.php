@@ -183,7 +183,7 @@ foreach (FUNNEL_FIELDS[$funnel] as $key) {
                 'skip_time'   => 'N',
                 'event_type'  => '#resourcebooking#',
             ]);
-            $eventId = (int)(is_array($event) ? ($event['ID'] ?? $event['id'] ?? 0) : 0);
+            $eventId = (int)(is_array($event) ? ($event['ID'] ?? $event['id'] ?? 0) : $event);
             if ($eventId > 0) {
                 $bookingIds[] = $eventId;
             } else {
