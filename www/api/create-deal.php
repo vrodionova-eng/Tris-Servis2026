@@ -52,6 +52,21 @@ function logError(string $msg): void {
     @file_put_contents($dir . '/create-deal.log', '[' . date('c') . '] ' . $msg . "\n", FILE_APPEND);
 }
 
+function getCalendarSection(int $userId): ?int
+{
+    try {
+        $sections = b24wh('calendar.section.get', ['type' => 'user', 'ownerId' => $userId]);
+    } catch (Throwable $e) {
+        logError('calendar.section.get error for user ' . $userId . ': ' . $e->getMessage());
+        return null;
+    }
+    foreach ((array)$sections as $s) {
+        $id = (int)($s['ID'] ?? 0);
+        if ($id > 0) return $id;
+    }
+    return null;
+}
+
 // ── Read input ────────────────────────────────────────────────────────────────
 $raw = file_get_contents('php://input');
 $payload = json_decode($raw, true);
@@ -90,7 +105,6 @@ const FIELDS = [
     'to2Team2'    => 'UF_CRM_1750920231839',   // Сервисная бригада ТО-2
 ];
 
-// Which fields apply to which funnel
 const FUNNEL_FIELDS = [
     'Сервисное обслуживание' => ['serviceTeam', 'partsTeam'],
     'Плановое ТО'            => ['to2Team1', 'to2Team2'],
@@ -111,7 +125,7 @@ try {
     respond(false, ['error' => 'B24 user lookup failed']);
 }
 
-// ── Create deal ───────────────────────────────────────────────────────────────
+// ── Create deal ─────────────────────────────────────────────────────────────────
 $catConfig = CATEGORIES[$funnel];
 $dealFields = [
     'TITLE'        => $name,
@@ -133,7 +147,7 @@ if ($dealId <= 0) {
     respond(false, ['error' => 'Failed to create deal']);
 }
 
-// ── Create bookings for each selected team member ─────────────────────────────
+// ── Create bookings and update deal UF fields ───────────────────────────────────
 $updateFields = [];
 $errors = [];
 
@@ -150,11 +164,18 @@ foreach (FUNNEL_FIELDS[$funnel] as $key) {
             continue;
         }
 
+        $sectionId = getCalendarSection($userId);
+        if ($sectionId === null) {
+            $errors[] = "Calendar section not found for $surname";
+            continue;
+        }
+
         $eventName = 'Бронирование: ' . $name;
         try {
             $event = b24wh('calendar.event.add', [
                 'type'        => 'user',
                 'ownerId'     => $userId,
+                'section'     => $sectionId,
                 'name'        => $eventName,
                 'description' => $eventName,
                 'from'        => $dateFrom,
@@ -179,7 +200,6 @@ foreach (FUNNEL_FIELDS[$funnel] as $key) {
     }
 }
 
-// ── Update deal with booking IDs ──────────────────────────────────────────────
 if (!empty($updateFields)) {
     try {
         b24wh('crm.deal.update', ['id' => $dealId, 'fields' => $updateFields]);
