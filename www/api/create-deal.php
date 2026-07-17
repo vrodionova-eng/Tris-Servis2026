@@ -70,36 +70,38 @@ function loadResourceMap(string $fieldName): array
         $fields = b24wh('crm.deal.fields', []);
         $settings = $fields[$fieldName]['settings'] ?? [];
 
-        // Пользователи (SELECTED_USERS) — это ID сотрудников Б24
-        foreach ((array)($settings['SELECTED_USERS'] ?? []) as $userId) {
-            $userId = (int)$userId;
-            if ($userId <= 0) continue;
-            try {
-                $users = b24wh('user.get', ['ID' => $userId, 'select' => ['ID', 'LAST_NAME']]);
-                $u = is_array($users) ? reset($users) : null;
-                if ($u && !empty($u['LAST_NAME'])) {
-                    $map[trim((string)$u['LAST_NAME'])] = ['type' => 'user', 'id' => $userId];
+        // Все активные пользователи Б24 — ищем по фамилии
+        try {
+            $users = b24wh('user.get', ['ACTIVE' => true, 'select' => ['ID', 'LAST_NAME', 'NAME']]);
+            foreach ((array)$users as $u) {
+                $surname = trim((string)($u['LAST_NAME'] ?? ''));
+                $userId  = (int)($u['ID'] ?? 0);
+                if ($surname !== '' && $userId > 0) {
+                    $map[$surname] = ['type' => 'user', 'id' => $userId];
                 }
-            } catch (Throwable $e) {
-                logError('user.get for ' . $userId . ': ' . $e->getMessage());
             }
+        } catch (Throwable $e) {
+            logError('user.get in loadResourceMap: ' . $e->getMessage());
         }
 
-        // Ресурсы календаря (SECTIONS) — ищем по фамилии в названии ресурса
+        // Ресурсы календаря (SECTIONS) — ищем по названию ресурса
         $resources = $settings['RESOURCES'] ?? [];
         if (isset($resources['resource']['SECTIONS'])) {
             foreach ((array)$resources['resource']['SECTIONS'] as $section) {
                 $name = trim((string)($section['NAME'] ?? ''));
                 $id   = (int)($section['ID'] ?? 0);
                 if ($id <= 0 || $name === '') continue;
-                // Извлекаем фамилию из полного имени ресурса (например "Тусюк Юрий" -> "Тусюк")
-                $parts = preg_split('/\s+/', $name);
-                $surname = $parts[0] ?? '';
-                if ($surname !== '') {
-                    $map[$surname] = ['type' => 'resource', 'id' => $id];
+                // Ресурсы добавляем только если фамилия не занята пользователем
+                // (например, "Белый Largus" — это ресурс, не сотрудник)
+                if (!isset($map[$name])) {
+                    $map[$name] = ['type' => 'resource', 'id' => $id];
                 }
-                // Также добавляем полное имя, если кто-то передаст его целиком
-                $map[$name] = ['type' => 'resource', 'id' => $id];
+                // Первое слово ресурса тоже как ключ, если оно не фамилия сотрудника
+                $parts = preg_split('/\s+/', $name);
+                $first = $parts[0] ?? '';
+                if ($first !== '' && !isset($map[$first])) {
+                    $map[$first] = ['type' => 'resource', 'id' => $id];
+                }
             }
         }
     } catch (Throwable $e) {
