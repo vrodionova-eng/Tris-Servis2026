@@ -59,11 +59,23 @@ function logError(string $msg): void {
 /**
  * Загружает карту ресурсов/пользователей из настроек UF-поля resourcebooking.
  * Возвращает [фамилия => id] для type=user и type=resource.
+ * Кэширует результат в файле на 24 часа, чтобы ускорить повторные запросы.
  */
 function loadResourceMap(string $fieldName): array
 {
     static $cache = [];
     if (isset($cache[$fieldName])) return $cache[$fieldName];
+
+    $cacheFile = DATA_ROOT . '/create-deal-resource-map.php';
+    $cacheTtl  = 86400; // 24 часа
+
+    $cached = storeRead($cacheFile);
+    if (is_array($cached) && !empty($cached['expiresAt']) && time() < (int)$cached['expiresAt']) {
+        if (isset($cached['maps'][$fieldName])) {
+            $cache[$fieldName] = $cached['maps'][$fieldName];
+            return $cached['maps'][$fieldName];
+        }
+    }
 
     $map = [];
     try {
@@ -109,6 +121,15 @@ function loadResourceMap(string $fieldName): array
     }
 
     $cache[$fieldName] = $map;
+
+    // Persist combined cache for all fields
+    $allMaps = is_array($cached) ? ($cached['maps'] ?? []) : [];
+    $allMaps[$fieldName] = $map;
+    storeWrite($cacheFile, [
+        'expiresAt' => time() + $cacheTtl,
+        'maps'      => $allMaps,
+    ]);
+
     return $map;
 }
 
