@@ -15,6 +15,10 @@
 // { "success": true, "dealId": "123" }
 // или
 // { "success": false, "error": "..." }
+//
+// Бронирование ресурсов заполняется через строковый формат Bitrix24 UI:
+//   user|<userId>|<DD.MM.YYYY HH:MM:SS>|<duration_sec>|<serviceName>
+// Например: user|57|17.07.2026 09:00:00|10800|Выезд к клиенту
 
 declare(strict_types=1);
 
@@ -52,19 +56,64 @@ function logError(string $msg): void {
     @file_put_contents($dir . '/create-deal.log', '[' . date('c') . '] ' . $msg . "\n", FILE_APPEND);
 }
 
-function getCalendarSection(int $userId): ?int
+/**
+ * Загружает карту ресурсов/пользователей из настроек UF-поля resourcebooking.
+ * Возвращает [фамилия => id] для type=user и type=resource.
+ */
+function loadResourceMap(string $fieldName): array
 {
+    static $cache = [];
+    if (isset($cache[$fieldName])) return $cache[$fieldName];
+
+    $map = [];
     try {
-        $sections = b24wh('calendar.section.get', ['type' => 'user', 'ownerId' => $userId]);
+        $fields = b24wh('crm.deal.fields', []);
+        $settings = $fields[$fieldName]['settings'] ?? [];
+
+        // Пользователи (SELECTED_USERS) — это ID сотрудников Б24
+        foreach ((array)($settings['SELECTED_USERS'] ?? []) as $userId) {
+            $userId = (int)$userId;
+            if ($userId <= 0) continue;
+            try {
+                $users = b24wh('user.get', ['ID' => $userId, 'select' => ['ID', 'LAST_NAME']]);
+                $u = is_array($users) ? reset($users) : null;
+                if ($u && !empty($u['LAST_NAME'])) {
+                    $map[trim((string)$u['LAST_NAME'])] = ['type' => 'user', 'id' => $userId];
+                }
+            } catch (Throwable $e) {
+                logError('user.get for ' . $userId . ': ' . $e->getMessage());
+            }
+        }
+
+        // Ресурсы календаря (SECTIONS) — ищем по фамилии в названии ресурса
+        $resources = $settings['RESOURCES'] ?? [];
+        if (isset($resources['resource']['SECTIONS'])) {
+            foreach ((array)$resources['resource']['SECTIONS'] as $section) {
+                $name = trim((string)($section['NAME'] ?? ''));
+                $id   = (int)($section['ID'] ?? 0);
+                if ($id <= 0 || $name === '') continue;
+                // Извлекаем фамилию из полного имени ресурса (например "Тусюк Юрий" -> "Тусюк")
+                $parts = preg_split('/\s+/', $name);
+                $surname = $parts[0] ?? '';
+                if ($surname !== '') {
+                    $map[$surname] = ['type' => 'resource', 'id' => $id];
+                }
+                // Также добавляем полное имя, если кто-то передаст его целиком
+                $map[$name] = ['type' => 'resource', 'id' => $id];
+            }
+        }
     } catch (Throwable $e) {
-        logError('calendar.section.get error for user ' . $userId . ': ' . $e->getMessage());
-        return null;
+        logError('loadResourceMap(' . $fieldName . ') error: ' . $e->getMessage());
     }
-    foreach ((array)$sections as $s) {
-        $id = (int)($s['ID'] ?? 0);
-        if ($id > 0) return $id;
-    }
-    return null;
+
+    $cache[$fieldName] = $map;
+    return $map;
+}
+
+function buildBookingValue(string $type, int $id, string $dateB24, int $durationSec = 10800, string $service = 'Выезд к клиенту'): string
+{
+    $timeFrom = $dateB24 . ' 09:00:00';
+    return implode('|', [$type, (string)$id, $timeFrom, (string)$durationSec, $service]);
 }
 
 // ── Read input ────────────────────────────────────────────────────────────────
@@ -105,27 +154,26 @@ const FIELDS = [
     'to2Team2'    => 'UF_CRM_1750920231839',   // Сервисная бригада ТО-2
 ];
 
+const DURATION_SEC = 10800; // 3 часа по умолчанию
+const SERVICE_NAME = 'Выезд к клиенту';
+
 const FUNNEL_FIELDS = [
     'Сервисное обслуживание' => ['serviceTeam', 'partsTeam'],
     'Плановое ТО'            => ['to2Team1', 'to2Team2'],
 ];
 
-// ── Load users and map surname → userId ─────────────────────────────────────────
-$userMap = [];
+// ── Load resource maps for each booking field ────────────────────────────────
+$resourceMaps = [];
 try {
-    $users = b24wh('user.get', ['ACTIVE' => true]);
-    foreach ((array)$users as $u) {
-        $surname = trim((string)($u['LAST_NAME'] ?? ''));
-        if ($surname !== '') {
-            $userMap[$surname] = (int)$u['ID'];
-        }
+    foreach (FIELDS as $key => $fieldName) {
+        $resourceMaps[$key] = loadResourceMap($fieldName);
     }
 } catch (Throwable $e) {
-    logError('user.get error: ' . $e->getMessage());
-    respond(false, ['error' => 'B24 user lookup failed']);
+    logError('Resource map load error: ' . $e->getMessage());
+    respond(false, ['error' => 'Failed to load resource maps']);
 }
 
-// ── Create deal ─────────────────────────────────────────────────────────────────
+// ── Build deal fields with bookings ─────────────────────────────────────────────
 $catConfig = CATEGORIES[$funnel];
 $dealFields = [
     'TITLE'        => $name,
@@ -133,7 +181,37 @@ $dealFields = [
     'STAGE_ID'     => $catConfig['stage'],
 ];
 
+$errors = [];
+foreach (FUNNEL_FIELDS[$funnel] as $key) {
+    $surnames = (array)($payload[$key] ?? []);
+    if (empty($surnames)) continue;
+
+    $map = $resourceMaps[$key] ?? [];
+    $values = [];
+    foreach ($surnames as $surname) {
+        $surname = trim((string)$surname);
+        if ($surname === '') continue;
+        $found = $map[$surname] ?? null;
+        if ($found === null) {
+            $errors[] = "Resource not found: $surname";
+            continue;
+        }
+        $values[] = buildBookingValue(
+            $found['type'],
+            $found['id'],
+            $dateB24,
+            DURATION_SEC,
+            SERVICE_NAME
+        );
+    }
+    if (!empty($values)) {
+        $dealFields[FIELDS[$key]] = $values;
+    }
+}
+
+// ── Create deal ───────────────────────────────────────────────────────────────
 $dealId = null;
+$result = null;
 try {
     $result = b24wh('crm.deal.add', ['fields' => $dealFields, 'params' => ['REGISTER_SONET_EVENT' => 'N']]);
     $dealId = (int)(is_array($result) ? ($result['ID'] ?? $result['id'] ?? 0) : $result);
@@ -147,69 +225,7 @@ if ($dealId <= 0) {
     respond(false, ['error' => 'Failed to create deal']);
 }
 
-// ── Create bookings and update deal UF fields ───────────────────────────────────
-$updateFields = [];
-$errors = [];
-
-foreach (FUNNEL_FIELDS[$funnel] as $key) {
-    $surnames = (array)($payload[$key] ?? []);
-    if (empty($surnames)) continue;
-
-    $bookingIds = [];
-    foreach ($surnames as $surname) {
-        $surname = trim((string)$surname);
-        $userId = $userMap[$surname] ?? null;
-        if ($userId === null) {
-            $errors[] = "User not found: $surname";
-            continue;
-        }
-
-        $sectionId = getCalendarSection($userId);
-        if ($sectionId === null) {
-            $errors[] = "Calendar section not found for $surname";
-            continue;
-        }
-
-        $eventName = 'Бронирование: ' . $name;
-        try {
-            $event = b24wh('calendar.event.add', [
-                'type'        => 'user',
-                'ownerId'     => $userId,
-                'section'     => $sectionId,
-                'name'        => $eventName,
-                'description' => $eventName,
-                'from'        => $dateFrom,
-                'to'          => $dateTo,
-                'skip_time'   => 'N',
-                'event_type'  => '#resourcebooking#',
-            ]);
-            $eventId = (int)(is_array($event) ? ($event['ID'] ?? $event['id'] ?? 0) : $event);
-            if ($eventId > 0) {
-                $bookingIds[] = $eventId;
-            } else {
-                $errors[] = "calendar.event.add returned no ID for $surname";
-            }
-        } catch (Throwable $e) {
-            logError('calendar.event.add error for ' . $surname . ': ' . $e->getMessage());
-            $errors[] = 'Booking error for ' . $surname . ': ' . $e->getMessage();
-        }
-    }
-
-    if (!empty($bookingIds)) {
-        $updateFields[FIELDS[$key]] = $bookingIds;
-    }
-}
-
-if (!empty($updateFields)) {
-    try {
-        b24wh('crm.deal.update', ['id' => $dealId, 'fields' => $updateFields]);
-    } catch (Throwable $e) {
-        logError('crm.deal.update error: ' . $e->getMessage());
-        $errors[] = 'Failed to update deal bookings: ' . $e->getMessage();
-    }
-}
-
 respond(true, [
-    'dealId' => $dealId,
+    'dealId'   => $dealId,
     'warnings' => $errors ?: null,
 ]);
