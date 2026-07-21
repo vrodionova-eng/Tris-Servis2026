@@ -1,13 +1,12 @@
 <?php
-// Cron worker: ensure +30 working days ahead in Google Sheets.
+// Cron worker: ensure +30 working days ahead in Google Sheets with separators.
 // Schedule: 0 0 * * * /usr/bin/php /var/www/Tris-Servis2026/bin/ensure-dates.php
 //
-// Logic:
-//   1. Find last date row in column A.
-//   2. Fill forward to today + 30 calendar days, skipping Sat/Sun.
-//   3. Every 5 working days → light-grey week separator row.
-//   4. On month change → darker grey month separator row.
-//   5. Existing rows are never touched — only appends missing ones.
+// Two passes:
+//   1. Backfill: walk existing dates top→bottom, insert missing week/month
+//      separators between them.
+//   2. Forward fill: append new dates from last existing date up to today+30,
+//      inserting separators as needed.
 declare(strict_types=1);
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
@@ -57,36 +56,72 @@ elog('=== end (' . round(microtime(true) - $started, 2) . 's) ===');
 
 function ensureDates(): void
 {
-    $sheets    = new GoogleSheets(SHEETS_ID);
+    $sheets     = new GoogleSheets(SHEETS_ID);
     $columnData = $sheets->readColumnA();
     $dateToRow  = $columnData['dates'];  // 'DD.MM.YYYY' => rowNum
     $monthToRow = $columnData['months']; // 'YYYY-MM'    => rowNum
 
     elog('Existing dates: ' . count($dateToRow) . ', month rows: ' . count($monthToRow));
 
-    // Target: today + 30 calendar days
     $today  = strtotime('today');
     $target = strtotime('+30 days', $today);
 
-    // Find last existing date or start from today
-    $lastDateTs = findLastDateTs($dateToRow);
-    $current    = $lastDateTs !== null ? $lastDateTs + 86400 : $today;
-
-    // Skip weekends for starting point
-    while (isWeekend($current)) $current += 86400;
-
-    // Determine position within current working week
-    // by looking at the last existing date's day-of-week
-    $lastDateTs = findLastDateTs($dateToRow);
-    $lastDow    = $lastDateTs !== null ? (int)date('w', $lastDateTs) : null; // 0=Sun, 1=Mon..5=Fri
-
-    // workDayCounter: how many working days already passed in current week block
-    // If last day was Friday(5) or weekend — counter starts at 0
-    // Otherwise counter = day of week number (Mon=1, Tue=2...)
-    $workDayCounter = ($lastDow !== null && $lastDow >= 1 && $lastDow <= 4) ? $lastDow : 0;
-    $lastMonth      = $lastDateTs !== null ? (int)date('n', $lastDateTs) : (int)date('n', $today);
+    // ── Pass 1: backfill separators between existing dates ───────────────────
+    // Sort existing dates chronologically
+    $sortedDates = array_keys($dateToRow);
+    usort($sortedDates, fn($a, $b) => dateToTs($a) <=> dateToTs($b));
 
     $inserted = 0;
+
+    for ($i = 0; $i < count($sortedDates); $i++) {
+        $dateStr  = $sortedDates[$i];
+        $ts       = dateToTs($dateStr);
+        $dow      = (int)date('w', $ts); // 1=Mon .. 5=Fri
+        $monthNum = (int)date('n', $ts);
+        $yearNum  = (int)date('Y', $ts);
+        $monthKey = sprintf('%04d-%02d', $yearNum, $monthNum);
+
+        // Month separator before first date of a new month
+        if (!isset($monthToRow[$monthKey])) {
+            $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
+            shiftRows($dateToRow, $monthToRow, $pos);
+            $sheets->insertMonthRow(ruMonthLabel($dateStr), $pos);
+            $monthToRow[$monthKey] = $pos;
+            elog("Month separator: " . ruMonthLabel($dateStr) . " → row $pos");
+            $inserted++;
+        }
+
+        // Week separator before a Monday (dow=1) that follows a Friday (dow=5)
+        // We detect this by checking: is this date a Monday, and is there
+        // a Friday date immediately before it in the sorted list?
+        if ($dow === 1 && $i > 0) {
+            $prevTs  = dateToTs($sortedDates[$i - 1]);
+            $prevDow = (int)date('w', $prevTs);
+            if ($prevDow === 5) {
+                // Check no separator already exists between them
+                $prevRow = $dateToRow[$sortedDates[$i - 1]] ?? null;
+                $thisRow = $dateToRow[$dateStr] ?? null;
+                if ($prevRow !== null && $thisRow !== null && $thisRow === $prevRow + 1) {
+                    // No gap — need to insert separator
+                    $pos = $thisRow; // insert at current date's row, pushing it down
+                    shiftRows($dateToRow, $monthToRow, $pos);
+                    $sheets->insertWeekRow($pos);
+                    elog("Week separator (backfill) → row $pos");
+                    $inserted++;
+                }
+            }
+        }
+    }
+
+    // ── Pass 2: forward fill new dates up to target ───────────────────────────
+    $lastDateTs = findLastDateTs($dateToRow);
+    $current    = $lastDateTs !== null ? $lastDateTs + 86400 : $today;
+    while (isWeekend($current)) $current += 86400;
+
+    $lastDow = $lastDateTs !== null ? (int)date('w', $lastDateTs) : null;
+    $workDayCounter = ($lastDow !== null && $lastDow >= 1 && $lastDow <= 4) ? $lastDow : 0;
+    $lastMonth = $lastDateTs !== null ? (int)date('n', $lastDateTs) : (int)date('n', $today);
+
     while ($current <= $target) {
         if (isWeekend($current)) {
             $current += 86400;
@@ -98,7 +133,7 @@ function ensureDates(): void
         $yearNum  = (int)date('Y', $current);
         $monthKey = sprintf('%04d-%02d', $yearNum, $monthNum);
 
-        // Month separator on month change
+        // Month separator
         if ($monthNum !== $lastMonth && !isset($monthToRow[$monthKey])) {
             $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
             shiftRows($dateToRow, $monthToRow, $pos);
@@ -109,6 +144,7 @@ function ensureDates(): void
             elog("Month separator: " . ruMonthLabel($dateStr) . " → row $pos");
             $inserted++;
         } elseif ($workDayCounter >= 5 && !isset($dateToRow[$dateStr])) {
+            // Week separator
             $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
             shiftRows($dateToRow, $monthToRow, $pos);
             $sheets->insertWeekRow($pos);
@@ -131,19 +167,23 @@ function ensureDates(): void
         $current += 86400;
     }
 
-    elog("Inserted rows: $inserted");
+    elog("Total inserted rows: $inserted");
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function dateToTs(string $d): int
+{
+    $p = explode('.', $d);
+    return count($p) === 3 ? mktime(0, 0, 0, (int)$p[1], (int)$p[0], (int)$p[2]) : 0;
+}
 
 function findLastDateTs(array $dateToRow): ?int
 {
     $maxTs = null;
     foreach (array_keys($dateToRow) as $d) {
-        $p = explode('.', $d);
-        if (count($p) !== 3) continue;
-        $ts = mktime(0, 0, 0, (int)$p[1], (int)$p[0], (int)$p[2]);
-        if ($maxTs === null || $ts > $maxTs) $maxTs = $ts;
+        $ts = dateToTs($d);
+        if ($ts && ($maxTs === null || $ts > $maxTs)) $maxTs = $ts;
     }
     return $maxTs;
 }
