@@ -125,6 +125,8 @@ function ensureDates(): void
     while (isWeekend($current)) $current += 86400;
 
     $lastMonth = $lastDateTs !== null ? (int)date('n', $lastDateTs) : (int)date('n', $today);
+    // Rows occupied by separators inserted this run but absent from dateToRow/monthToRow
+    $minDatePos = null;
 
     while ($current <= $target) {
         if (isWeekend($current)) {
@@ -141,17 +143,21 @@ function ensureDates(): void
         // Month separator on month change
         if ($monthNum !== $lastMonth && !isset($monthToRow[$monthKey])) {
             $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
+            if ($minDatePos !== null) $pos = max($pos, $minDatePos);
             shiftRows($dateToRow, $monthToRow, $pos);
             $sheets->insertMonthRow(ruMonthLabel($dateStr), $pos);
             $monthToRow[$monthKey] = $pos;
-            $lastMonth = $monthNum;
+            $lastMonth  = $monthNum;
+            $minDatePos = $pos + 1; // date must go after the month header
             elog("Month separator: " . ruMonthLabel($dateStr) . " → row $pos");
             $inserted++;
         } elseif ($dow === 1 && !isset($dateToRow[$dateStr])) {
             // Week separator before Monday (unless month separator just inserted)
             $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
+            if ($minDatePos !== null) $pos = max($pos, $minDatePos);
             shiftRows($dateToRow, $monthToRow, $pos);
             $sheets->insertWeekRow($pos);
+            $minDatePos = $pos + 1; // Monday must go after the week separator
             elog("Week separator → row $pos");
             $inserted++;
         }
@@ -159,6 +165,7 @@ function ensureDates(): void
         // Date row
         if (!isset($dateToRow[$dateStr])) {
             $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
+            if ($minDatePos !== null) $pos = max($pos, $minDatePos);
             shiftRows($dateToRow, $monthToRow, $pos);
             $sheets->insertDateRow($dateStr, $pos);
             $dateToRow[$dateStr] = $pos;
