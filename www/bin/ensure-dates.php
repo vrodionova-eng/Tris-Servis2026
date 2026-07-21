@@ -75,8 +75,15 @@ function ensureDates(): void
     // Skip weekends for starting point
     while (isWeekend($current)) $current += 86400;
 
-    // Count working days since last separator (week or month)
-    $workDayCounter = countWorkDaysSinceLastSeparator($sheets, $dateToRow, $monthToRow);
+    // Determine position within current working week
+    // by looking at the last existing date's day-of-week
+    $lastDateTs = findLastDateTs($dateToRow);
+    $lastDow    = $lastDateTs !== null ? (int)date('w', $lastDateTs) : null; // 0=Sun, 1=Mon..5=Fri
+
+    // workDayCounter: how many working days already passed in current week block
+    // If last day was Friday(5) or weekend — counter starts at 0
+    // Otherwise counter = day of week number (Mon=1, Tue=2...)
+    $workDayCounter = ($lastDow !== null && $lastDow >= 1 && $lastDow <= 4) ? $lastDow : 0;
     $lastMonth      = $lastDateTs !== null ? (int)date('n', $lastDateTs) : (int)date('n', $today);
 
     $inserted = 0;
@@ -101,12 +108,11 @@ function ensureDates(): void
             $workDayCounter = 0;
             elog("Month separator: " . ruMonthLabel($dateStr) . " → row $pos");
             $inserted++;
-        }
-        // Week separator every 5 working days
-        elseif ($workDayCounter > 0 && $workDayCounter % 5 === 0 && !isset($dateToRow[$dateStr])) {
+        } elseif ($workDayCounter >= 5 && !isset($dateToRow[$dateStr])) {
             $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
             shiftRows($dateToRow, $monthToRow, $pos);
             $sheets->insertWeekRow($pos);
+            $workDayCounter = 0;
             elog("Week separator → row $pos");
             $inserted++;
         }
@@ -140,38 +146,6 @@ function findLastDateTs(array $dateToRow): ?int
         if ($maxTs === null || $ts > $maxTs) $maxTs = $ts;
     }
     return $maxTs;
-}
-
-function countWorkDaysSinceLastSeparator(GoogleSheets $sheets, array $dateToRow, array $monthToRow): int
-{
-    if (empty($dateToRow)) return 0;
-
-    // Walk backwards from the last row; stop at any separator row
-    $allRows = array_merge(array_values($dateToRow), array_values($monthToRow));
-    $lastRow = max($allRows);
-
-    // We need to read the actual sheet to detect week separators.
-    // Simpler approach: count dates from the end until we hit a gap > 1 row
-    // or a month separator. Week separators are blank rows we can't distinguish
-    // from month rows via readColumnA alone, so we read raw values.
-    $sorted = $dateToRow;
-    arsort($sorted); // highest row first
-
-    $count = 0;
-    $prevRow = null;
-    foreach ($sorted as $date => $row) {
-        if ($prevRow !== null && $prevRow - $row > 1) {
-            break; // gap = separator row(s)
-        }
-        // Check if this row is a month separator
-        $p = explode('.', $date);
-        $mk = $p[2] . '-' . $p[1];
-        if (isset($monthToRow[$mk]) && $monthToRow[$mk] === $row) break;
-
-        $count++;
-        $prevRow = $row;
-    }
-    return $count;
 }
 
 function shiftRows(array &$dateToRow, array &$monthToRow, int $pos): void
