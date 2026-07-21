@@ -192,6 +192,47 @@ final class GoogleSheets
         );
     }
 
+    /**
+     * Insert a light-grey week-separator row at $rowNum (empty label).
+     * Lighter than insertMonthRow (0.93 vs 0.85).
+     */
+    public function insertWeekRow(int $rowNum): void
+    {
+        $token   = $this->getToken();
+        $sheetId = $this->getSheetId($token);
+
+        httpJson('POST',
+            "https://sheets.googleapis.com/v4/spreadsheets/{$this->spreadsheetId}:batchUpdate",
+            [
+                'headers' => ["Authorization: Bearer {$token}", 'Content-Type: application/json'],
+                'body'    => (string)json_encode(['requests' => [
+                    [
+                        'insertDimension' => [
+                            'range' => [
+                                'sheetId'    => $sheetId,
+                                'dimension'  => 'ROWS',
+                                'startIndex' => $rowNum - 1,
+                                'endIndex'   => $rowNum,
+                            ],
+                            'inheritFromBefore' => false,
+                        ],
+                    ],
+                    [
+                        'repeatCell' => [
+                            'range'  => ['sheetId' => $sheetId,
+                                         'startRowIndex' => $rowNum - 1, 'endRowIndex' => $rowNum,
+                                         'startColumnIndex' => 0, 'endColumnIndex' => 26],
+                            'cell'   => ['userEnteredFormat' => [
+                                'backgroundColor' => ['red' => 0.93, 'green' => 0.93, 'blue' => 0.93],
+                            ]],
+                            'fields' => 'userEnteredFormat.backgroundColor',
+                        ],
+                    ],
+                ]]),
+            ]
+        );
+    }
+
     private const RU_MONTHS_MAP = [
         'Январь'=>1,'Февраль'=>2,'Март'=>3,'Апрель'=>4,'Май'=>5,'Июнь'=>6,
         'Июль'=>7,'Август'=>8,'Сентябрь'=>9,'Октябрь'=>10,'Ноябрь'=>11,'Декабрь'=>12,
