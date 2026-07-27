@@ -1,16 +1,14 @@
 <?php
-// Cron worker: ensure +30 working days ahead in Google Sheets with separators.
+// Cron worker: add EXACTLY ONE row per run (date or week separator).
 // Schedule: 0 0 * * * /usr/bin/php /var/www/Tris-Servis2026/bin/ensure-dates.php
 //
-// Logic (Monday-based):
-//   1. Backfill: for every existing Monday date — make sure the row directly
-//      above it is an empty separator row (no date). If not — insert grey row.
-//   2. Month separators: before the first date of each month (if missing).
-//   3. Forward fill: append new dates from last existing date up to today+30,
-//      skipping weekends; before each Monday insert a week separator first.
+// Logic:
+//   1. Backfill: ensure every existing Monday has an empty row above it.
+//   2. Then, add ONLY ONE new row:
+//        - If next workday is Monday AND no separator above → insert grey separator.
+//        - Else → insert the next workday's date.
 //
-// Separator detection: a separator row = row with EMPTY column A
-// (month separators have "Июль 2026" text and are skipped separately).
+// Separator = empty cell in column A (month headers are ignored).
 declare(strict_types=1);
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
@@ -62,28 +60,25 @@ function ensureDates(): void
 {
     $sheets     = new GoogleSheets(SHEETS_ID);
     $columnData = $sheets->readColumnA();
-    $dateToRow  = $columnData['dates'];  // 'DD.MM.YYYY' => rowNum
-    $monthToRow = $columnData['months']; // 'YYYY-MM'    => rowNum
+    $dateToRow  = $columnData['dates'];
+    $monthToRow = $columnData['months'];
 
     elog('Existing dates: ' . count($dateToRow) . ', month rows: ' . count($monthToRow));
 
-    $today  = strtotime('today');
-    $target = strtotime('+30 days', $today);
     $inserted = 0;
 
-    // ── Pass 1: backfill separators between existing dates ───────────────────
-    // Sort existing dates chronologically
+    // ── Pass 1: Backfill — ensure separators before existing Mondays ───────────
     $sortedDates = array_keys($dateToRow);
     usort($sortedDates, fn($a, $b) => dateToTs($a) <=> dateToTs($b));
 
     foreach ($sortedDates as $dateStr) {
         $ts       = dateToTs($dateStr);
-        $dow      = (int)date('w', $ts); // 1=Mon .. 5=Fri
+        $dow      = (int)date('w', $ts);
         $monthNum = (int)date('n', $ts);
         $yearNum  = (int)date('Y', $ts);
         $monthKey = sprintf('%04d-%02d', $yearNum, $monthNum);
 
-        // Month separator before first date of a new month
+        // Month separator
         if (!isset($monthToRow[$monthKey])) {
             $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
             shiftRows($dateToRow, $monthToRow, $pos);
@@ -93,90 +88,94 @@ function ensureDates(): void
             $inserted++;
         }
 
-        // Week separator: before each Monday, the row above must be empty
-        // (i.e. there must be a gap between this Monday and the previous date row).
+        // Week separator before Monday
         if ($dow === 1) {
             $thisRow = $dateToRow[$dateStr] ?? null;
-            // Row directly above this Monday
-            $aboveRow = $thisRow !== null ? $thisRow - 1 : null;
-            // Is any date or month label sitting in $aboveRow?
+            if ($thisRow === null) continue;
+            $aboveRow = $thisRow - 1;
             $aboveIsDate  = $aboveRow !== null && in_array($aboveRow, $dateToRow, true);
             $aboveIsMonth = $aboveRow !== null && in_array($aboveRow, $monthToRow, true);
 
-            if ($thisRow !== null && !$aboveIsDate && !$aboveIsMonth) {
-                // Row above is empty → separator already exists, nothing to do
-                continue;
-            }
-            if ($thisRow !== null && $aboveIsDate && !$aboveIsMonth) {
-                // Row above holds another date (Friday) — insert separator between
-                $pos = $thisRow; // push Monday down
+            if ($aboveIsDate && !$aboveIsMonth) {
+                $pos = $thisRow;
                 shiftRows($dateToRow, $monthToRow, $pos);
                 $sheets->insertWeekRow($pos);
                 elog("Week separator (backfill) → row $pos");
                 $inserted++;
             }
-            // If above is a month row — month separator already separates weeks, skip
         }
     }
 
-    // ── Pass 2: forward fill new dates up to target ───────────────────────────
+    // ── Pass 2: Add EXACTLY ONE ROW ───────────────────────────────────────────
     $lastDateTs = findLastDateTs($dateToRow);
-    $current    = $lastDateTs !== null ? $lastDateTs + 86400 : $today;
-    while (isWeekend($current)) $current += 86400;
 
-    $lastMonth = $lastDateTs !== null ? (int)date('n', $lastDateTs) : (int)date('n', $today);
-    // Rows occupied by separators inserted this run but absent from dateToRow/monthToRow
-    $minDatePos = null;
+    if ($lastDateTs === null) {
+        // No dates yet: start with next workday
+        $nextTs = strtotime('today');
+        while (isWeekend($nextTs)) $nextTs += 86400;
+        $nextDateStr = date('d.m.Y', $nextTs);
+        $nextDow = (int)date('w', $nextTs);
 
-    while ($current <= $target) {
-        if (isWeekend($current)) {
-            $current += 86400;
-            continue;
-        }
-
-        $dateStr  = date('d.m.Y', $current);
-        $dow      = (int)date('w', $current);
-        $monthNum = (int)date('n', $current);
-        $yearNum  = (int)date('Y', $current);
-        $monthKey = sprintf('%04d-%02d', $yearNum, $monthNum);
-
-        // Month separator on month change
-        if ($monthNum !== $lastMonth && !isset($monthToRow[$monthKey])) {
-            $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
-            if ($minDatePos !== null) $pos = max($pos, $minDatePos);
+        $pos = findInsertRow($nextDateStr, array_merge($dateToRow, $monthToRow));
+        if ($nextDow === 1) {
+            // Next workday is Monday → check if separator needed
+            $abovePos = $pos - 1;
+            $aboveIsDate  = in_array($abovePos, $dateToRow, true);
+            $aboveIsMonth = in_array($abovePos, $monthToRow, true);
+            if ($aboveIsDate) {
+                shiftRows($dateToRow, $monthToRow, $pos);
+                $sheets->insertWeekRow($pos);
+                elog("Week separator (first Monday) → row $pos");
+            } else {
+                shiftRows($dateToRow, $monthToRow, $pos);
+                $sheets->insertDateRow($nextDateStr, $pos);
+                $dateToRow[$nextDateStr] = $pos;
+                elog("First date: $nextDateStr → row $pos");
+            }
+        } else {
             shiftRows($dateToRow, $monthToRow, $pos);
-            $sheets->insertMonthRow(ruMonthLabel($dateStr), $pos);
-            $monthToRow[$monthKey] = $pos;
-            $lastMonth  = $monthNum;
-            $minDatePos = $pos + 1; // date must go after the month header
-            elog("Month separator: " . ruMonthLabel($dateStr) . " → row $pos");
-            $inserted++;
-        } elseif ($dow === 1 && !isset($dateToRow[$dateStr])) {
-            // Week separator before Monday (unless month separator just inserted)
-            $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
-            if ($minDatePos !== null) $pos = max($pos, $minDatePos);
-            shiftRows($dateToRow, $monthToRow, $pos);
-            $sheets->insertWeekRow($pos);
-            $minDatePos = $pos + 1; // Monday must go after the week separator
-            elog("Week separator → row $pos");
-            $inserted++;
+            $sheets->insertDateRow($nextDateStr, $pos);
+            $dateToRow[$nextDateStr] = $pos;
+            elog("First date: $nextDateStr → row $pos");
         }
+        $inserted++;
+    } else {
+        // Find next workday after last existing date
+        $nextWorkTs = $lastDateTs + 86400;
+        while (isWeekend($nextWorkTs)) $nextWorkTs += 86400;
+        $nextWorkDateStr = date('d.m.Y', $nextWorkTs);
+        $nextWorkDow = (int)date('w', $nextWorkTs);
 
-        // Date row
-        if (!isset($dateToRow[$dateStr])) {
-            $pos = findInsertRow($dateStr, array_merge($dateToRow, $monthToRow));
-            if ($minDatePos !== null) $pos = max($pos, $minDatePos);
+        $pos = findInsertRow($nextWorkDateStr, array_merge($dateToRow, $monthToRow));
+        if ($nextWorkDow === 1) {
+            // Next workday is Monday
+            $abovePos = $pos - 1;
+            $aboveIsDate  = in_array($abovePos, $dateToRow, true);
+            $aboveIsMonth = in_array($abovePos, $monthToRow, true);
+
+            if ($aboveIsDate) {
+                // Friday above → need separator
+                shiftRows($dateToRow, $monthToRow, $pos);
+                $sheets->insertWeekRow($pos);
+                elog("Week separator (before Monday) → row $pos");
+            } else {
+                // Separator already exists or month above → add Monday date
+                shiftRows($dateToRow, $monthToRow, $pos);
+                $sheets->insertDateRow($nextWorkDateStr, $pos);
+                $dateToRow[$nextWorkDateStr] = $pos;
+                elog("Date (Monday): $nextWorkDateStr → row $pos");
+            }
+        } else {
+            // Regular workday (Tue-Fri)
             shiftRows($dateToRow, $monthToRow, $pos);
-            $sheets->insertDateRow($dateStr, $pos);
-            $dateToRow[$dateStr] = $pos;
-            elog("Date: $dateStr → row $pos");
-            $inserted++;
+            $sheets->insertDateRow($nextWorkDateStr, $pos);
+            $dateToRow[$nextWorkDateStr] = $pos;
+            elog("Date: $nextWorkDateStr → row $pos");
         }
-
-        $current += 86400;
+        $inserted++;
     }
 
-    elog("Total inserted rows: $inserted");
+    elog("Total inserted rows in this run: $inserted");
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
