@@ -219,9 +219,12 @@ function runJob(): void
         }
     }
 
-    // Write new/updated cells (links only — coloring is owned by color-links.php
-    // which colors per-cell by that cell's booking date+time).
+    // Write only NEW or CHANGED cells. Rewriting an unchanged cell would send
+    // richTextValue runs without foregroundColor → Sheets resets text to default
+    // link blue, wiping color-links.php's colors within 2 minutes.
+    $written = 0;
     foreach ($newAssign as $key => $deals) {
+        if (isset($oldAssign[$key]) && $oldAssign[$key] == $deals) continue;
         [$date, $surname] = explode('|', $key, 2);
         $col = $columnMap[$surname] ?? null;
         $row = $dateToRow[$date]   ?? null;
@@ -242,11 +245,13 @@ function runJob(): void
             $num++;
         }
         $updates[] = ['cellRef' => $col . $row, 'text' => $text, 'runs' => $runs];
+        $written++;
     }
 
+    $skipped = count($newAssign) - $written;
     if (!empty($updates)) {
         $sheets->batchUpdate($updates);
-        logline('Cells updated: ' . count($updates) . ' (clear=' . count($toRemove) . ', write=' . count($newAssign) . ')');
+        logline('Cells updated: ' . count($updates) . ' (clear=' . count($toRemove) . ', write=' . $written . ', unchanged=' . $skipped . ')');
     } else {
         logline('No cell changes');
     }
