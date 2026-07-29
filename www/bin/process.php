@@ -124,7 +124,7 @@ function runJob(): void
     // Key: 'DD.MM.YYYY|Surname', value: [dealId => ['id', 'url', 'title']]
     $newAssign = [];
     $missed    = [];
-    $bookingTimes = []; // dealId => latest booking timestamp (int)
+    $bookingTimes = []; // dealId => [booking start timestamps (int), ...]
 
     foreach ($bookings as $b) {
         $deal = $titleMap[$b['title']] ?? null;
@@ -134,13 +134,13 @@ function runJob(): void
         }
         $dealEntry = ['id' => $deal['id'], 'url' => $deal['url'], 'title' => $b['title']];
 
-        // Track latest booking start datetime for this deal (for time-based coloring)
+        // Collect ALL booking start datetimes for this deal (for time-based coloring).
+        // A deal may have several bookings (e.g. yesterday + today); coloring fires
+        // once ANY of them has arrived.
         $bTs = bookingTs($b['dateTimeFrom'] ?? '');
         if ($bTs > 0) {
             $did = (string)$deal['id'];
-            if (!isset($bookingTimes[$did]) || $bTs > $bookingTimes[$did]) {
-                $bookingTimes[$did] = $bTs;
-            }
+            $bookingTimes[$did][] = $bTs;
         }
 
         foreach (expandDates($b['date'], $b['dateTo']) as $date) {
@@ -361,8 +361,8 @@ function determineLinkColors(array $newAssign): array
         foreach ($dates as $dt) { if ($dt > $dealDate) $dealDate = $dt; }
 
         // Color only when BOTH the booking date AND its start time have arrived.
-        $bTs = (int)($bookingTimes[$dealId] ?? 0);
-        $timeArrived = $bTs > 0 ? ($now >= $bTs) : ($dealDate !== '' && $dealDate <= $today);
+        // A deal may have several bookings; color once ANY has arrived.
+        $timeArrived = anyBookingArrivedP($bookingTimes[$dealId] ?? null, $dealDate, $today, $now);
 
         if ($dealDate !== '' && $timeArrived) {
             $catId   = (int)($deal['CATEGORY_ID'] ?? -1);
@@ -402,6 +402,25 @@ function determineLinkColors(array $newAssign): array
     logline('Link colors: total=' . count($colors));
 
     return $colors;
+}
+
+/**
+ * Has at least one booking arrived (date AND time)?
+ * $times — int timestamp | int[] timestamps | null (no record).
+ * Falls back to date-only comparison when no timestamps were recorded.
+ */
+function anyBookingArrivedP($times, string $dealDate, string $today, int $now): bool
+{
+    if (is_array($times) && !empty($times)) {
+        foreach ($times as $t) {
+            if ((int)$t > 0 && $now >= (int)$t) return true;
+        }
+        return false;
+    }
+    if (is_int($times) && $times > 0) {
+        return $now >= $times;
+    }
+    return $dealDate !== '' && $dealDate <= $today;
 }
 
 function actFilledP(array $deal, string $actField): bool

@@ -352,14 +352,9 @@ function determineColor(array $deal, array $categories, array $dealAllDates = []
     if ($dealDate === '') return null; // no date
 
     // Color only when BOTH the booking date AND its start time have arrived.
-    // Use the exact booking timestamp if process.php recorded one; otherwise
-    // fall back to date-only comparison (date <= today).
-    $bookingTs = (int)($bookingTimes[$dealId] ?? 0);
-    if ($bookingTs > 0) {
-        if ($now < $bookingTs) return null; // booking datetime still in the future
-    } else {
-        if ($dealDate > $today) return null; // all dates in the future
-    }
+    // A deal may have several bookings; color once ANY has arrived.
+    $timeArrived = anyBookingArrived($bookingTimes[$dealId] ?? null, $dealDate, $today, $now);
+    if (!$timeArrived) return null; // no booking has arrived yet
 
     // Check each brigade→act pair independently.
     // Only pairs where the brigade field has booking IDs (non-empty) are checked.
@@ -374,4 +369,24 @@ function determineColor(array $deal, array $categories, array $dealAllDates = []
 
     if (!$anyChecked) return null;
     return $allGreen ? 'green' : 'red';
+}
+
+/**
+ * Has at least one booking arrived (date AND time)?
+ * $times — int timestamp | int[] timestamps | null (no record).
+ * Falls back to date-only comparison when no timestamps were recorded.
+ */
+function anyBookingArrived($times, string $dealDate, string $today, int $now): bool
+{
+    if (is_array($times) && !empty($times)) {
+        foreach ($times as $t) {
+            if ((int)$t > 0 && $now >= (int)$t) return true;
+        }
+        return false;
+    }
+    if (is_int($times) && $times > 0) {
+        return $now >= $times;
+    }
+    // No timestamp recorded → date-only fallback
+    return $dealDate !== '' && $dealDate <= $today;
 }
