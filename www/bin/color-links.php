@@ -145,6 +145,11 @@ function runJob(): void
         }
     }
 
+    // ── 4b. Booking start datetimes (written by process.php) ─────────────
+    //     dealId => latest booking timestamp. Used so coloring only happens
+    //     once BOTH the date AND the time of the booking have arrived.
+    $bookingTimes = storeRead(DATA_ROOT . '/deal-booking-times.php') ?? [];
+
     // ── 5. Fetch unchecked deals ──────────────────────────────────────────
     $deals = [];
     if (!empty($toCheck)) {
@@ -158,7 +163,7 @@ function runJob(): void
 
     foreach ($deals as $deal) {
         $dealId = (string)$deal['ID'];
-        $color  = determineColor($deal, $categories, $dealAllDates);
+        $color  = determineColor($deal, $categories, $dealAllDates, $bookingTimes);
         if ($color === null) {
             $dates = $dealAllDates[$dealId] ?? [];
             $dbg = [
@@ -316,9 +321,10 @@ function actFilled(array $deal, string $actField): bool
  * Determine link color for a deal.
  * Returns 'green', 'red', or null (no rule matched — leave default).
  */
-function determineColor(array $deal, array $categories, array $dealAllDates = []): ?string
+function determineColor(array $deal, array $categories, array $dealAllDates = [], array $bookingTimes = []): ?string
 {
     $today  = date('Y-m-d');
+    $now    = time();
     $dealId = (string)($deal['ID'] ?? '');
 
     $catId = (int)($deal['CATEGORY_ID'] ?? -1);
@@ -343,7 +349,17 @@ function determineColor(array $deal, array $categories, array $dealAllDates = []
     foreach ($dates as $d) {
         if ($d > $dealDate) $dealDate = $d;
     }
-    if ($dealDate === '' || $dealDate > $today) return null; // no date or all future
+    if ($dealDate === '') return null; // no date
+
+    // Color only when BOTH the booking date AND its start time have arrived.
+    // Use the exact booking timestamp if process.php recorded one; otherwise
+    // fall back to date-only comparison (date <= today).
+    $bookingTs = (int)($bookingTimes[$dealId] ?? 0);
+    if ($bookingTs > 0) {
+        if ($now < $bookingTs) return null; // booking datetime still in the future
+    } else {
+        if ($dealDate > $today) return null; // all dates in the future
+    }
 
     // Check each brigade→act pair independently.
     // Only pairs where the brigade field has booking IDs (non-empty) are checked.

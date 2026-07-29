@@ -124,6 +124,7 @@ function runJob(): void
     // Key: 'DD.MM.YYYY|Surname', value: [dealId => ['id', 'url', 'title']]
     $newAssign = [];
     $missed    = [];
+    $bookingTimes = []; // dealId => latest booking timestamp (int)
 
     foreach ($bookings as $b) {
         $deal = $titleMap[$b['title']] ?? null;
@@ -133,11 +134,23 @@ function runJob(): void
         }
         $dealEntry = ['id' => $deal['id'], 'url' => $deal['url'], 'title' => $b['title']];
 
+        // Track latest booking start datetime for this deal (for time-based coloring)
+        $bTs = bookingTs($b['dateTimeFrom'] ?? '');
+        if ($bTs > 0) {
+            $did = (string)$deal['id'];
+            if (!isset($bookingTimes[$did]) || $bTs > $bookingTimes[$did]) {
+                $bookingTimes[$did] = $bTs;
+            }
+        }
+
         foreach (expandDates($b['date'], $b['dateTo']) as $date) {
             $key = $date . '|' . $b['surname'];
             $newAssign[$key][$deal['id']] = $dealEntry;
         }
     }
+
+    // Persist booking start times (read by color-links.php — no extra API calls)
+    storeWrite(DATA_ROOT . '/deal-booking-times.php', $bookingTimes);
 
     if (!empty($missed)) {
         logline('Titles not matched to active deals: ' . implode('; ', array_keys($missed)));
@@ -245,6 +258,15 @@ function runJob(): void
     logline('State saved');
 }
 
+/** Parse "DD.MM.YYYY HH:MM:SS" → Unix timestamp. Returns 0 on failure. */
+function bookingTs(string $dateTime): int
+{
+    if (!preg_match('/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/', $dateTime, $m)) {
+        return 0;
+    }
+    return mktime((int)($m[4] ?? 0), (int)($m[5] ?? 0), (int)($m[6] ?? 0), (int)$m[2], (int)$m[1], (int)$m[3]);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Link color helpers — runs every cycle so colors are always fresh.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -315,6 +337,9 @@ function determineLinkColors(array $newAssign): array
     }
 
     $today = date('Y-m-d');
+    $now   = time();
+    // Booking start datetimes for time-based coloring (date AND time must arrive)
+    $bookingTimes = storeRead(DATA_ROOT . '/deal-booking-times.php') ?? [];
     $rules = [
         'сервисн' => [
             ['UF_CRM_1750775559215', 'UF_CRM_1770287721239'],
@@ -335,7 +360,11 @@ function determineLinkColors(array $newAssign): array
         $dealDate = '';
         foreach ($dates as $dt) { if ($dt > $dealDate) $dealDate = $dt; }
 
-        if ($dealDate !== '' && $dealDate <= $today) {
+        // Color only when BOTH the booking date AND its start time have arrived.
+        $bTs = (int)($bookingTimes[$dealId] ?? 0);
+        $timeArrived = $bTs > 0 ? ($now >= $bTs) : ($dealDate !== '' && $dealDate <= $today);
+
+        if ($dealDate !== '' && $timeArrived) {
             $catId   = (int)($deal['CATEGORY_ID'] ?? -1);
             $cat     = $categories[$catId] ?? null;
             if ($cat !== null) {

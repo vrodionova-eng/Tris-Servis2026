@@ -65,10 +65,11 @@ function fetchTechBookings(array $techUsers, string $from, string $to): array
             $title = trim(preg_replace('/^Бронирование:\s*/u', '', $name));
 
             $result[] = [
-                'date'    => $date,
-                'dateTo'  => $dateTo,
-                'surname' => $surname,
-                'title'   => $title,
+                'date'         => $date,
+                'dateTo'       => $dateTo,
+                'surname'      => $surname,
+                'title'        => $title,
+                'dateTimeFrom' => $rawFrom, // full "DD.MM.YYYY HH:MM:SS" for time-based coloring
             ];
         }
     }
