@@ -124,7 +124,7 @@ function runJob(): void
     // Key: 'DD.MM.YYYY|Surname', value: [dealId => ['id', 'url', 'title']]
     $newAssign = [];
     $missed    = [];
-    $bookingTimes = []; // dealId => [booking start timestamps (int), ...]
+    $bookingTimes = []; // dealId => ['YYYY-MM-DD' => booking start timestamp, ...]
 
     foreach ($bookings as $b) {
         $deal = $titleMap[$b['title']] ?? null;
@@ -134,13 +134,21 @@ function runJob(): void
         }
         $dealEntry = ['id' => $deal['id'], 'url' => $deal['url'], 'title' => $b['title']];
 
-        // Collect ALL booking start datetimes for this deal (for time-based coloring).
-        // A deal may have several bookings (e.g. yesterday + today); coloring fires
-        // once ANY of them has arrived.
+        // Collect booking start datetime per date for this deal (time-based coloring
+        // per cell). A deal may appear on several dates; each cell colors only when
+        // ITS OWN booking date+time has arrived.
         $bTs = bookingTs($b['dateTimeFrom'] ?? '');
         if ($bTs > 0) {
             $did = (string)$deal['id'];
-            $bookingTimes[$did][] = $bTs;
+            foreach (expandDates($b['date'], $b['dateTo']) as $date) {
+                $ymd = dmyToYmd($date);
+                if ($ymd !== '') {
+                    // keep the earliest start time recorded for that date
+                    if (!isset($bookingTimes[$did][$ymd]) || $bTs < $bookingTimes[$did][$ymd]) {
+                        $bookingTimes[$did][$ymd] = $bTs;
+                    }
+                }
+            }
         }
 
         foreach (expandDates($b['date'], $b['dateTo']) as $date) {
@@ -157,9 +165,8 @@ function runJob(): void
     }
     logline('Assignments: ' . count($newAssign));
 
-    // ── 6. Determine link colors (every run, so colors are fresh) ──────────────
-    $linkColors = determineLinkColors($newAssign);
-    storeWrite(DATA_ROOT . '/link-colors.php', $linkColors);
+    // Link coloring is owned by color-links.php (per-cell by booking date+time).
+    // process.php only writes links; it no longer computes or applies colors.
 
     // ── 7. Stale cell clearing ────────────────────────────────────────────────
     $oldAssign = storeRead($CELLS_STATE) ?? []; // previously written keys
@@ -212,10 +219,8 @@ function runJob(): void
         }
     }
 
-    // Read link colors if available
-    $linkColors = storeRead(DATA_ROOT . '/link-colors.php') ?? [];
-
-    // Write new/updated cells
+    // Write new/updated cells (links only — coloring is owned by color-links.php
+    // which colors per-cell by that cell's booking date+time).
     foreach ($newAssign as $key => $deals) {
         [$date, $surname] = explode('|', $key, 2);
         $col = $columnMap[$surname] ?? null;
@@ -229,12 +234,6 @@ function runJob(): void
             if ($text !== '') $text .= "\n";
             $prefix = $num . '. ';
             $format = ['link' => ['uri' => $d['url']]];
-            $color  = $linkColors[(string)$d['id']] ?? null;
-            if ($color === 'green') {
-                $format['foregroundColor'] = ['red' => 0.0, 'green' => 0.5, 'blue' => 0.0];
-            } elseif ($color === 'red') {
-                $format['foregroundColor'] = ['red' => 0.7, 'green' => 0.0, 'blue' => 0.0];
-            }
             $runs[] = [
                 'startIndex' => mb_strlen($text, 'UTF-8'),
                 'format'     => $format,
@@ -267,176 +266,9 @@ function bookingTs(string $dateTime): int
     return mktime((int)($m[4] ?? 0), (int)($m[5] ?? 0), (int)($m[6] ?? 0), (int)$m[2], (int)$m[1], (int)$m[3]);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Link color helpers — runs every cycle so colors are always fresh.
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function determineLinkColors(array $newAssign): array
+/** Convert 'DD.MM.YYYY' → 'YYYY-MM-DD'. Returns '' on failure. */
+function dmyToYmd(string $d): string
 {
-    $allDealIds = [];
-    foreach ($newAssign as $deals) {
-        foreach ($deals as $d) {
-            $allDealIds[(string)$d['id']] = true;
-        }
-    }
-    if (empty($allDealIds)) return [];
-
-    $greenState = storeRead(DATA_ROOT . '/deal-colors.php') ?? [];
-    $toCheck    = array_diff_key($allDealIds, $greenState);
-    logline('Link colors: green=' . count($greenState) . ', to-check=' . count($toCheck));
-
-    // Already-green deals → green
-    $colors = [];
-    foreach ($greenState as $id => $_) {
-        $colors[$id] = 'green';
-    }
-
-    if (empty($toCheck)) return $colors;
-
-    // Fetch categories and deals with UF fields
-    $categories = [];
-    try {
-        $cats = b24wh('crm.category.list', ['entityTypeId' => 2]);
-        foreach ((array)((is_array($cats) ? ($cats['categories'] ?? $cats) : [])) as $c) {
-            $id   = (int)($c['id'] ?? $c['ID'] ?? 0);
-            $name = trim((string)($c['name'] ?? $c['NAME'] ?? ''));
-            if ($id > 0 && $name !== '') $categories[$id] = ['id' => $id, 'name' => $name];
-        }
-    } catch (Throwable $e) {
-        logline('Link colors: category fetch error — ' . $e->getMessage());
-    }
-
-    $ufFields = [
-        'UF_CRM_1750775559215', 'UF_CRM_1751015039070',
-        'UF_CRM_1750920048783', 'UF_CRM_1750920231839',
-        'UF_CRM_1770287721239', 'UF_CRM_1760359069161',
-        'UF_CRM_1758266160075', 'UF_CRM_1758530158437',
-    ];
-
-    // Build deal→dates from newAssign
-    $dealAllDates = [];
-    foreach ($newAssign as $key => $deals) {
-        $d = explode('|', $key, 2)[0];
-        if (!preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $d, $m)) continue;
-        $ymd = $m[3] . '-' . $m[2] . '-' . $m[1];
-        foreach ($deals as $di) {
-            $dealAllDates[(string)$di['id']][] = $ymd;
-        }
-    }
-
-    // Fetch deals
-    $select = array_merge(['ID', 'TITLE', 'CATEGORY_ID'], $ufFields);
-    $deals  = [];
-    foreach (array_chunk(array_keys($toCheck), 50) as $chunk) {
-        try {
-            $items = b24wh('crm.deal.list', ['filter' => ['ID' => $chunk], 'select' => $select]);
-            if (is_array($items)) $deals = array_merge($deals, $items);
-        } catch (Throwable $e) {
-            logline('Link colors: deal fetch error — ' . $e->getMessage());
-        }
-    }
-
-    $today = date('Y-m-d');
-    $now   = time();
-    // Booking start datetimes for time-based coloring (date AND time must arrive)
-    $bookingTimes = storeRead(DATA_ROOT . '/deal-booking-times.php') ?? [];
-    $rules = [
-        'сервисн' => [
-            ['UF_CRM_1750775559215', 'UF_CRM_1770287721239'],
-            ['UF_CRM_1751015039070', 'UF_CRM_1760359069161'],
-        ],
-        'планов' => [
-            ['UF_CRM_1750920048783', 'UF_CRM_1758266160075'],
-            ['UF_CRM_1750920231839', 'UF_CRM_1758530158437'],
-        ],
-    ];
-
-    foreach ($deals as $deal) {
-        $dealId = (string)$deal['ID'];
-        $color  = null;
-
-        // Latest date for this deal
-        $dates = $dealAllDates[$dealId] ?? [];
-        $dealDate = '';
-        foreach ($dates as $dt) { if ($dt > $dealDate) $dealDate = $dt; }
-
-        // Color only when BOTH the booking date AND its start time have arrived.
-        // A deal may have several bookings; color once ANY has arrived.
-        $timeArrived = anyBookingArrivedP($bookingTimes[$dealId] ?? null, $dealDate, $today, $now);
-
-        if ($dealDate !== '' && $timeArrived) {
-            $catId   = (int)($deal['CATEGORY_ID'] ?? -1);
-            $cat     = $categories[$catId] ?? null;
-            if ($cat !== null) {
-                $catName = mb_strtolower(trim($cat['name']));
-                $catRules = null;
-                foreach ($rules as $kw => $rs) {
-                    if (mb_strpos($catName, $kw) !== false) { $catRules = $rs; break; }
-                }
-                if ($catRules !== null) {
-                    $anyChecked = false;
-                    $allGreen   = true;
-                    foreach ($catRules as [$brigadeField, $actField]) {
-                        $val = $deal[$brigadeField] ?? [];
-                        if (!is_array($val) || empty($val)) continue;
-                        $anyChecked = true;
-                        if (!actFilledP($deal, $actField)) $allGreen = false;
-                    }
-                    if ($anyChecked) {
-                        $color = $allGreen ? 'green' : 'red';
-                    }
-                }
-            }
-        }
-
-        if ($color === 'green') {
-            $colors[$dealId] = 'green';
-            $greenState[$dealId] = true;
-        } elseif ($color === 'red') {
-            $colors[$dealId] = 'red';
-        }
-    }
-
-    // Persist greens
-    storeWrite(DATA_ROOT . '/deal-colors.php', $greenState);
-    logline('Link colors: total=' . count($colors));
-
-    return $colors;
-}
-
-/**
- * Has at least one booking arrived (date AND time)?
- * $times — int timestamp | int[] timestamps | null (no record).
- * Falls back to date-only comparison when no timestamps were recorded.
- */
-function anyBookingArrivedP($times, string $dealDate, string $today, int $now): bool
-{
-    if (is_array($times) && !empty($times)) {
-        foreach ($times as $t) {
-            if ((int)$t > 0 && $now >= (int)$t) return true;
-        }
-        return false;
-    }
-    if (is_int($times) && $times > 0) {
-        return $now >= $times;
-    }
-    return $dealDate !== '' && $dealDate <= $today;
-}
-
-function actFilledP(array $deal, string $actField): bool
-{
-    $val = $deal[$actField] ?? null;
-    if ($val === null) return false;
-    if (is_int($val) && $val > 0) return true;
-    if (is_string($val) && trim($val) !== '' && trim($val) !== '0') return true;
-    if (is_array($val) && !empty($val)) {
-        if (isset($val['id']) && (int)$val['id'] > 0) return true;
-        $first = $val[0] ?? null;
-        if ($first !== null) {
-            if (is_int($first) && $first > 0) return true;
-            if (is_array($first) && !empty($first['id'] ?? $first['ID'] ?? '')) return true;
-            if (is_string($first) && trim($first) !== '') return true;
-        }
-    }
-    return false;
+    $p = explode('.', $d);
+    return count($p) === 3 ? $p[2] . '-' . $p[1] . '-' . $p[0] : '';
 }

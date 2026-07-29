@@ -157,14 +157,17 @@ function runJob(): void
         logline('Fetched deals: ' . count($deals));
     }
 
-    // ── 6. Determine colors ───────────────────────────────────────────────
-    $newGreen = [];
-    $colorMap = [];
+    // ── 6. Build per-deal data: category rules + act-filled status ────────────
+    //     Color is decided PER CELL (by that cell's date), so here we only
+    //     precompute for each deal: which rule set applies, and whether the
+    //     act file is filled. The date/time gate is applied per cell in step 9.
+    $dealInfo  = []; // dealId => ['anyChecked'=>bool, 'allGreen'=>bool]
+    $newGreen  = [];
 
     foreach ($deals as $deal) {
         $dealId = (string)$deal['ID'];
-        $color  = determineColor($deal, $categories, $dealAllDates, $bookingTimes);
-        if ($color === null) {
+        $info   = analyzeDeal($deal, $categories);
+        if ($info === null) {
             $dates = $dealAllDates[$dealId] ?? [];
             $dbg = [
                 'id' => $dealId,
@@ -174,50 +177,43 @@ function runJob(): void
             foreach (allUfFields() as $uf) {
                 $dbg[$uf] = json_encode($deal[$uf] ?? null, JSON_UNESCAPED_UNICODE);
             }
-            logline('NO-COLOR: ' . json_encode($dbg, JSON_UNESCAPED_UNICODE));
+            logline('NO-RULE: ' . json_encode($dbg, JSON_UNESCAPED_UNICODE));
+            continue;
         }
-        if ($color !== null) {
-            $colorMap[$dealId] = $color;
-            if ($color === 'green') {
-                $newGreen[$dealId] = true;
-            }
-        }
+        $dealInfo[$dealId] = $info;
     }
 
-    foreach ($greenState as $dealId => $_) {
-        $colorMap[$dealId] = 'green';
-    }
+    logline('Deals with rules: ' . count($dealInfo) . ', persisted green=' . count($greenState));
 
-    logline('Colors: green=' . count($newGreen) . ' persisted=' . count($greenState)
-        . ', red=' . (count($colorMap) - count($newGreen) - count($greenState)));
-
-    // ── 7. Persist new greens (permanent cache) ──────────────────────────
-    if (!empty($newGreen)) {
-        storeWrite($COLOR_STATE, array_merge($greenState, $newGreen));
-    }
-
-    // ── 9. Build batchUpdate ──────────────────────────────────────────────
+    // ── 9. Build batchUpdate (color decided per cell by that cell's date) ────
     $sheets    = new GoogleSheets(SHEETS_ID);
     $colMap    = loadColumnMap($sheets);
     $dateToRow = $sheets->readColumnA()['dates'] ?? [];
 
+    $today = date('Y-m-d');
+    $now   = time();
+
     $updates = [];
     foreach ($state as $key => $deals) {
         $parts   = explode('|', $key, 2);
-        $date    = $parts[0];
+        $date    = $parts[0];                 // DD.MM.YYYY — this cell's date
         $surname = $parts[1] ?? '';
         $col     = $colMap[$surname] ?? null;
         $row     = $dateToRow[$date] ?? null;
         if ($col === null || $row === null) continue;
 
+        $cellYmd = dmyToYmdC($date);          // YYYY-MM-DD for this cell
+
         $text = '';
         $runs = [];
         $num  = 1;
         foreach ($deals as $dealId => $info) {
-            $color = $colorMap[(string)$dealId] ?? null;
+            $dealId = (string)$dealId;
             if ($text !== '') $text .= "\n";
             $prefix = $num . '. ';
             $format = ['link' => ['uri' => $info['url']]];
+
+            $color = colorForCell($dealId, $cellYmd, $dealInfo, $greenState, $bookingTimes, $today, $now);
             if ($color === 'green') {
                 $format['foregroundColor'] = ['red' => 0.0, 'green' => 0.5, 'blue' => 0.0];
             } elseif ($color === 'red') {
@@ -231,6 +227,21 @@ function runJob(): void
             $num++;
         }
         $updates[] = ['cellRef' => $col . $row, 'text' => $text, 'runs' => $runs];
+    }
+
+    // Persist greens that turned green on an ARRIVED date this run
+    foreach ($state as $key => $deals) {
+        $date    = explode('|', $key, 2)[0];
+        $cellYmd = dmyToYmdC($date);
+        foreach ($deals as $dealId => $_) {
+            $dealId = (string)$dealId;
+            $c = colorForCell($dealId, $cellYmd, $dealInfo, $greenState, $bookingTimes, $today, $now);
+            if ($c === 'green') $newGreen[$dealId] = true;
+        }
+    }
+    if (!empty($newGreen)) {
+        storeWrite($COLOR_STATE, array_merge($greenState, $newGreen));
+        logline('Persisted new greens: ' . count($newGreen));
     }
 
     if (!empty($updates)) {
@@ -318,22 +329,18 @@ function actFilled(array $deal, string $actField): bool
 }
 
 /**
- * Determine link color for a deal.
- * Returns 'green', 'red', or null (no rule matched — leave default).
+ * Analyze a deal: which rule set applies, and is the act filled.
+ * Returns ['allGreen'=>bool] or null when no rule matches / no brigade field set.
+ * Date/time gating is NOT done here — it's per-cell in colorForCell().
  */
-function determineColor(array $deal, array $categories, array $dealAllDates = [], array $bookingTimes = []): ?string
+function analyzeDeal(array $deal, array $categories): ?array
 {
-    $today  = date('Y-m-d');
-    $now    = time();
-    $dealId = (string)($deal['ID'] ?? '');
-
     $catId = (int)($deal['CATEGORY_ID'] ?? -1);
     $cat   = $categories[$catId] ?? null;
     if ($cat === null) return null;
 
     $catName = mb_strtolower(trim($cat['name']));
 
-    // Find matching rule set for this category
     $rules = null;
     foreach (colorRules() as $keyword => $ruleSet) {
         if (mb_strpos($catName, $keyword) !== false) {
@@ -343,21 +350,6 @@ function determineColor(array $deal, array $categories, array $dealAllDates = []
     }
     if ($rules === null) return null;
 
-    // Get the latest sheet date for this deal (across all technicians)
-    $dates = $dealAllDates[$dealId] ?? [];
-    $dealDate = '';
-    foreach ($dates as $d) {
-        if ($d > $dealDate) $dealDate = $d;
-    }
-    if ($dealDate === '') return null; // no date
-
-    // Color only when BOTH the booking date AND its start time have arrived.
-    // A deal may have several bookings; color once ANY has arrived.
-    $timeArrived = anyBookingArrived($bookingTimes[$dealId] ?? null, $dealDate, $today, $now);
-    if (!$timeArrived) return null; // no booking has arrived yet
-
-    // Check each brigade→act pair independently.
-    // Only pairs where the brigade field has booking IDs (non-empty) are checked.
     $anyChecked = false;
     $allGreen   = true;
     foreach ($rules as [$brigadeField, $actField]) {
@@ -368,25 +360,39 @@ function determineColor(array $deal, array $categories, array $dealAllDates = []
     }
 
     if (!$anyChecked) return null;
-    return $allGreen ? 'green' : 'red';
+    return ['allGreen' => $allGreen];
 }
 
 /**
- * Has at least one booking arrived (date AND time)?
- * $times — int timestamp | int[] timestamps | null (no record).
- * Falls back to date-only comparison when no timestamps were recorded.
+ * Decide the link color for a deal in a SPECIFIC cell (by that cell's date).
+ * Returns 'green', 'red', or null (leave default/blue).
+ *
+ * - Persisted green deals stay green everywhere.
+ * - Otherwise: color only when the booking date+time for THIS cell's date
+ *   has arrived. Not arrived → null (blue).
  */
-function anyBookingArrived($times, string $dealDate, string $today, int $now): bool
+function colorForCell(string $dealId, string $cellYmd, array $dealInfo, array $greenState, array $bookingTimes, string $today, int $now): ?string
 {
-    if (is_array($times) && !empty($times)) {
-        foreach ($times as $t) {
-            if ((int)$t > 0 && $now >= (int)$t) return true;
-        }
-        return false;
+    if (isset($greenState[$dealId])) return 'green';
+
+    $info = $dealInfo[$dealId] ?? null;
+    if ($info === null) return null;
+
+    // Booking start time recorded for this exact date?
+    $ts = $bookingTimes[$dealId][$cellYmd] ?? null;
+    if (is_int($ts) && $ts > 0) {
+        if ($now < $ts) return null; // this cell's booking hasn't started yet
+    } else {
+        // No timestamp for this date → fall back to date-only comparison
+        if ($cellYmd === '' || $cellYmd > $today) return null;
     }
-    if (is_int($times) && $times > 0) {
-        return $now >= $times;
-    }
-    // No timestamp recorded → date-only fallback
-    return $dealDate !== '' && $dealDate <= $today;
+
+    return $info['allGreen'] ? 'green' : 'red';
+}
+
+/** Convert 'DD.MM.YYYY' → 'YYYY-MM-DD'. Returns '' on failure. */
+function dmyToYmdC(string $d): string
+{
+    $p = explode('.', $d);
+    return count($p) === 3 ? $p[2] . '-' . $p[1] . '-' . $p[0] : '';
 }
