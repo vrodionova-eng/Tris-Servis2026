@@ -1,0 +1,776 @@
+[2026-07-02T00:00:01+00:00] === color-links start ===
+[2026-07-02T00:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T00:00:01+00:00] Already green: 33, to check: 2
+[2026-07-02T00:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T00:00:02+00:00] Fetched deals: 2
+[2026-07-02T00:00:02+00:00] Colors: green=1 persisted=33, red=1
+[2026-07-02T00:00:03+00:00] Cells updated: 2
+[2026-07-02T00:00:03+00:00] === color-links end (2.09s) ===
+[2026-07-02T00:15:01+00:00] === color-links start ===
+[2026-07-02T00:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T00:15:01+00:00] Already green: 34, to check: 2
+[2026-07-02T00:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T00:15:01+00:00] Fetched deals: 2
+[2026-07-02T00:15:01+00:00] Colors: green=1 persisted=34, red=1
+[2026-07-02T00:15:02+00:00] Cells updated: 2
+[2026-07-02T00:15:02+00:00] === color-links end (1.69s) ===
+[2026-07-02T00:30:01+00:00] === color-links start ===
+[2026-07-02T00:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T00:30:01+00:00] Already green: 35, to check: 2
+[2026-07-02T00:30:02+00:00] Categories: [3,5,7]
+[2026-07-02T00:30:02+00:00] Fetched deals: 2
+[2026-07-02T00:30:02+00:00] Colors: green=1 persisted=35, red=1
+[2026-07-02T00:30:03+00:00] Cells updated: 2
+[2026-07-02T00:30:03+00:00] === color-links end (1.74s) ===
+[2026-07-02T00:45:01+00:00] === color-links start ===
+[2026-07-02T00:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T00:45:01+00:00] Already green: 36, to check: 2
+[2026-07-02T00:45:02+00:00] Categories: [3,5,7]
+[2026-07-02T00:45:02+00:00] Fetched deals: 2
+[2026-07-02T00:45:02+00:00] Colors: green=1 persisted=36, red=1
+[2026-07-02T00:45:03+00:00] Cells updated: 2
+[2026-07-02T00:45:03+00:00] === color-links end (2.1s) ===
+[2026-07-02T01:00:01+00:00] === color-links start ===
+[2026-07-02T01:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T01:00:01+00:00] Already green: 37, to check: 2
+[2026-07-02T01:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T01:00:01+00:00] Fetched deals: 2
+[2026-07-02T01:00:01+00:00] Colors: green=1 persisted=37, red=1
+[2026-07-02T01:00:02+00:00] Cells updated: 2
+[2026-07-02T01:00:02+00:00] === color-links end (1.84s) ===
+[2026-07-02T01:15:01+00:00] === color-links start ===
+[2026-07-02T01:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T01:15:01+00:00] Already green: 38, to check: 2
+[2026-07-02T01:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T01:15:01+00:00] Fetched deals: 2
+[2026-07-02T01:15:01+00:00] Colors: green=1 persisted=38, red=1
+[2026-07-02T01:15:03+00:00] Cells updated: 2
+[2026-07-02T01:15:03+00:00] === color-links end (2.21s) ===
+[2026-07-02T01:30:01+00:00] === color-links start ===
+[2026-07-02T01:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T01:30:01+00:00] Already green: 39, to check: 2
+[2026-07-02T01:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T01:30:01+00:00] Fetched deals: 2
+[2026-07-02T01:30:01+00:00] Colors: green=1 persisted=39, red=1
+[2026-07-02T01:30:04+00:00] Cells updated: 2
+[2026-07-02T01:30:04+00:00] === color-links end (2.74s) ===
+[2026-07-02T01:45:01+00:00] === color-links start ===
+[2026-07-02T01:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T01:45:01+00:00] Already green: 40, to check: 2
+[2026-07-02T01:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T01:45:01+00:00] Fetched deals: 2
+[2026-07-02T01:45:01+00:00] Colors: green=1 persisted=40, red=1
+[2026-07-02T01:45:03+00:00] Cells updated: 2
+[2026-07-02T01:45:03+00:00] === color-links end (1.57s) ===
+[2026-07-02T02:00:01+00:00] === color-links start ===
+[2026-07-02T02:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T02:00:01+00:00] Already green: 41, to check: 2
+[2026-07-02T02:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T02:00:02+00:00] Fetched deals: 2
+[2026-07-02T02:00:02+00:00] Colors: green=1 persisted=41, red=1
+[2026-07-02T02:00:03+00:00] Cells updated: 2
+[2026-07-02T02:00:03+00:00] === color-links end (2.16s) ===
+[2026-07-02T02:15:01+00:00] === color-links start ===
+[2026-07-02T02:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T02:15:01+00:00] Already green: 42, to check: 2
+[2026-07-02T02:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T02:15:01+00:00] Fetched deals: 2
+[2026-07-02T02:15:01+00:00] Colors: green=1 persisted=42, red=1
+[2026-07-02T02:15:03+00:00] Cells updated: 2
+[2026-07-02T02:15:03+00:00] === color-links end (1.64s) ===
+[2026-07-02T02:30:01+00:00] === color-links start ===
+[2026-07-02T02:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T02:30:01+00:00] Already green: 43, to check: 2
+[2026-07-02T02:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T02:30:02+00:00] Fetched deals: 2
+[2026-07-02T02:30:02+00:00] Colors: green=1 persisted=43, red=1
+[2026-07-02T02:30:03+00:00] Cells updated: 2
+[2026-07-02T02:30:03+00:00] === color-links end (1.9s) ===
+[2026-07-02T02:45:02+00:00] === color-links start ===
+[2026-07-02T02:45:02+00:00] Unique deals in sheet: 2
+[2026-07-02T02:45:02+00:00] Already green: 44, to check: 2
+[2026-07-02T02:45:02+00:00] Categories: [3,5,7]
+[2026-07-02T02:45:02+00:00] Fetched deals: 2
+[2026-07-02T02:45:02+00:00] Colors: green=1 persisted=44, red=1
+[2026-07-02T02:45:32+00:00] EXCEPTION: HTTP error: Operation timed out after 30002 milliseconds with 0 bytes received @ /var/www/Tris-Servis2026/api/lib.php:47
+[2026-07-02T02:45:32+00:00] === color-links end (30.33s) ===
+[2026-07-02T03:00:01+00:00] === color-links start ===
+[2026-07-02T03:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T03:00:01+00:00] Already green: 45, to check: 2
+[2026-07-02T03:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T03:00:01+00:00] Fetched deals: 2
+[2026-07-02T03:00:01+00:00] Colors: green=1 persisted=45, red=1
+[2026-07-02T03:00:04+00:00] Cells updated: 2
+[2026-07-02T03:00:04+00:00] === color-links end (3.53s) ===
+[2026-07-02T03:15:01+00:00] === color-links start ===
+[2026-07-02T03:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T03:15:01+00:00] Already green: 46, to check: 2
+[2026-07-02T03:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T03:15:02+00:00] Fetched deals: 2
+[2026-07-02T03:15:02+00:00] Colors: green=1 persisted=46, red=1
+[2026-07-02T03:15:05+00:00] Cells updated: 2
+[2026-07-02T03:15:05+00:00] === color-links end (3.59s) ===
+[2026-07-02T03:30:01+00:00] === color-links start ===
+[2026-07-02T03:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T03:30:01+00:00] Already green: 47, to check: 2
+[2026-07-02T03:30:02+00:00] Categories: [3,5,7]
+[2026-07-02T03:30:02+00:00] Fetched deals: 2
+[2026-07-02T03:30:02+00:00] Colors: green=1 persisted=47, red=1
+[2026-07-02T03:30:05+00:00] Cells updated: 2
+[2026-07-02T03:30:05+00:00] === color-links end (3.72s) ===
+[2026-07-02T03:45:01+00:00] === color-links start ===
+[2026-07-02T03:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T03:45:01+00:00] Already green: 48, to check: 2
+[2026-07-02T03:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T03:45:01+00:00] Fetched deals: 2
+[2026-07-02T03:45:01+00:00] Colors: green=1 persisted=48, red=1
+[2026-07-02T03:45:04+00:00] Cells updated: 2
+[2026-07-02T03:45:04+00:00] === color-links end (3.06s) ===
+[2026-07-02T04:00:01+00:00] === color-links start ===
+[2026-07-02T04:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T04:00:01+00:00] Already green: 49, to check: 2
+[2026-07-02T04:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T04:00:01+00:00] Fetched deals: 2
+[2026-07-02T04:00:01+00:00] Colors: green=1 persisted=49, red=1
+[2026-07-02T04:00:04+00:00] Cells updated: 2
+[2026-07-02T04:00:04+00:00] === color-links end (3.77s) ===
+[2026-07-02T04:15:01+00:00] === color-links start ===
+[2026-07-02T04:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T04:15:01+00:00] Already green: 50, to check: 2
+[2026-07-02T04:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T04:15:01+00:00] Fetched deals: 2
+[2026-07-02T04:15:01+00:00] Colors: green=1 persisted=50, red=1
+[2026-07-02T04:15:03+00:00] Cells updated: 2
+[2026-07-02T04:15:03+00:00] === color-links end (2.72s) ===
+[2026-07-02T04:30:01+00:00] === color-links start ===
+[2026-07-02T04:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T04:30:01+00:00] Already green: 51, to check: 2
+[2026-07-02T04:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T04:30:01+00:00] Fetched deals: 2
+[2026-07-02T04:30:01+00:00] Colors: green=1 persisted=51, red=1
+[2026-07-02T04:30:03+00:00] Cells updated: 2
+[2026-07-02T04:30:03+00:00] === color-links end (2.07s) ===
+[2026-07-02T04:45:01+00:00] === color-links start ===
+[2026-07-02T04:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T04:45:01+00:00] Already green: 52, to check: 2
+[2026-07-02T04:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T04:45:02+00:00] Fetched deals: 2
+[2026-07-02T04:45:02+00:00] Colors: green=1 persisted=52, red=1
+[2026-07-02T04:45:05+00:00] Cells updated: 2
+[2026-07-02T04:45:05+00:00] === color-links end (3.35s) ===
+[2026-07-02T05:00:01+00:00] === color-links start ===
+[2026-07-02T05:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T05:00:01+00:00] Already green: 53, to check: 2
+[2026-07-02T05:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T05:00:01+00:00] Fetched deals: 2
+[2026-07-02T05:00:01+00:00] Colors: green=1 persisted=53, red=1
+[2026-07-02T05:00:05+00:00] Cells updated: 2
+[2026-07-02T05:00:05+00:00] === color-links end (3.62s) ===
+[2026-07-02T05:15:01+00:00] === color-links start ===
+[2026-07-02T05:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T05:15:01+00:00] Already green: 54, to check: 2
+[2026-07-02T05:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T05:15:01+00:00] Fetched deals: 2
+[2026-07-02T05:15:01+00:00] Colors: green=1 persisted=54, red=1
+[2026-07-02T05:15:03+00:00] Cells updated: 2
+[2026-07-02T05:15:03+00:00] === color-links end (2.29s) ===
+[2026-07-02T05:30:02+00:00] === color-links start ===
+[2026-07-02T05:30:02+00:00] Unique deals in sheet: 2
+[2026-07-02T05:30:02+00:00] Already green: 55, to check: 2
+[2026-07-02T05:30:02+00:00] Categories: [3,5,7]
+[2026-07-02T05:30:02+00:00] Fetched deals: 2
+[2026-07-02T05:30:02+00:00] Colors: green=1 persisted=55, red=1
+[2026-07-02T05:30:04+00:00] Cells updated: 2
+[2026-07-02T05:30:04+00:00] === color-links end (2.24s) ===
+[2026-07-02T05:45:01+00:00] === color-links start ===
+[2026-07-02T05:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T05:45:01+00:00] Already green: 56, to check: 2
+[2026-07-02T05:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T05:45:01+00:00] Fetched deals: 2
+[2026-07-02T05:45:01+00:00] Colors: green=1 persisted=56, red=1
+[2026-07-02T05:45:03+00:00] Cells updated: 2
+[2026-07-02T05:45:03+00:00] === color-links end (2.03s) ===
+[2026-07-02T06:00:01+00:00] === color-links start ===
+[2026-07-02T06:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T06:00:01+00:00] Already green: 57, to check: 2
+[2026-07-02T06:00:02+00:00] Categories: [3,5,7]
+[2026-07-02T06:00:02+00:00] Fetched deals: 2
+[2026-07-02T06:00:02+00:00] Colors: green=1 persisted=57, red=1
+[2026-07-02T06:00:04+00:00] Cells updated: 2
+[2026-07-02T06:00:04+00:00] === color-links end (2.14s) ===
+[2026-07-02T06:07:31+00:00] === color-links start ===
+[2026-07-02T06:07:31+00:00] Unique deals in sheet: 2
+[2026-07-02T06:07:31+00:00] Already green: 58, to check: 2
+[2026-07-02T06:07:31+00:00] Categories: [3,5,7]
+[2026-07-02T06:07:31+00:00] Fetched deals: 2
+[2026-07-02T06:07:31+00:00] Colors: green=1 persisted=58, red=1
+[2026-07-02T06:07:34+00:00] Cells updated: 2
+[2026-07-02T06:07:34+00:00] === color-links end (2.38s) ===
+[2026-07-02T06:15:01+00:00] === color-links start ===
+[2026-07-02T06:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T06:15:01+00:00] Already green: 59, to check: 2
+[2026-07-02T06:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T06:15:01+00:00] Fetched deals: 2
+[2026-07-02T06:15:01+00:00] Colors: green=1 persisted=59, red=1
+[2026-07-02T06:15:03+00:00] Cells updated: 2
+[2026-07-02T06:15:03+00:00] === color-links end (2.24s) ===
+[2026-07-02T06:30:01+00:00] === color-links start ===
+[2026-07-02T06:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T06:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T06:30:02+00:00] Categories: [3,5,7]
+[2026-07-02T06:30:02+00:00] Fetched deals: 1
+[2026-07-02T06:30:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T06:30:04+00:00] Cells updated: 2
+[2026-07-02T06:30:04+00:00] === color-links end (2.46s) ===
+[2026-07-02T06:45:01+00:00] === color-links start ===
+[2026-07-02T06:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T06:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T06:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T06:45:02+00:00] Fetched deals: 1
+[2026-07-02T06:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T06:45:03+00:00] Cells updated: 2
+[2026-07-02T06:45:03+00:00] === color-links end (1.82s) ===
+[2026-07-02T07:00:01+00:00] === color-links start ===
+[2026-07-02T07:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T07:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T07:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T07:00:01+00:00] Fetched deals: 1
+[2026-07-02T07:00:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T07:00:02+00:00] Cells updated: 2
+[2026-07-02T07:00:02+00:00] === color-links end (1.69s) ===
+[2026-07-02T07:15:01+00:00] === color-links start ===
+[2026-07-02T07:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T07:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T07:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T07:15:02+00:00] Fetched deals: 1
+[2026-07-02T07:15:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T07:15:03+00:00] Cells updated: 2
+[2026-07-02T07:15:03+00:00] === color-links end (1.65s) ===
+[2026-07-02T07:30:01+00:00] === color-links start ===
+[2026-07-02T07:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T07:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T07:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T07:30:01+00:00] Fetched deals: 1
+[2026-07-02T07:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T07:30:03+00:00] Cells updated: 2
+[2026-07-02T07:30:03+00:00] === color-links end (2.11s) ===
+[2026-07-02T07:45:01+00:00] === color-links start ===
+[2026-07-02T07:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T07:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T07:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T07:45:02+00:00] Fetched deals: 1
+[2026-07-02T07:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T07:45:03+00:00] Cells updated: 2
+[2026-07-02T07:45:03+00:00] === color-links end (2.11s) ===
+[2026-07-02T08:00:01+00:00] === color-links start ===
+[2026-07-02T08:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T08:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T08:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T08:00:02+00:00] Fetched deals: 1
+[2026-07-02T08:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T08:00:03+00:00] Cells updated: 2
+[2026-07-02T08:00:03+00:00] === color-links end (1.71s) ===
+[2026-07-02T08:15:01+00:00] === color-links start ===
+[2026-07-02T08:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T08:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T08:15:02+00:00] Categories: [3,5,7]
+[2026-07-02T08:15:02+00:00] Fetched deals: 1
+[2026-07-02T08:15:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T08:15:04+00:00] Cells updated: 2
+[2026-07-02T08:15:04+00:00] === color-links end (2.39s) ===
+[2026-07-02T08:30:01+00:00] === color-links start ===
+[2026-07-02T08:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T08:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T08:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T08:30:01+00:00] Fetched deals: 1
+[2026-07-02T08:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T08:30:03+00:00] Cells updated: 2
+[2026-07-02T08:30:03+00:00] === color-links end (2.1s) ===
+[2026-07-02T08:45:01+00:00] === color-links start ===
+[2026-07-02T08:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T08:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T08:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T08:45:01+00:00] Fetched deals: 1
+[2026-07-02T08:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T08:45:03+00:00] Cells updated: 2
+[2026-07-02T08:45:03+00:00] === color-links end (2.21s) ===
+[2026-07-02T09:00:01+00:00] === color-links start ===
+[2026-07-02T09:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T09:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T09:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T09:00:02+00:00] Fetched deals: 1
+[2026-07-02T09:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T09:00:03+00:00] Cells updated: 2
+[2026-07-02T09:00:03+00:00] === color-links end (1.64s) ===
+[2026-07-02T09:15:01+00:00] === color-links start ===
+[2026-07-02T09:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T09:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T09:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T09:15:01+00:00] Fetched deals: 1
+[2026-07-02T09:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T09:15:02+00:00] Cells updated: 2
+[2026-07-02T09:15:02+00:00] === color-links end (1.9s) ===
+[2026-07-02T09:30:01+00:00] === color-links start ===
+[2026-07-02T09:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T09:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T09:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T09:30:01+00:00] Fetched deals: 1
+[2026-07-02T09:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T09:30:02+00:00] Cells updated: 2
+[2026-07-02T09:30:02+00:00] === color-links end (1.57s) ===
+[2026-07-02T09:45:01+00:00] === color-links start ===
+[2026-07-02T09:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T09:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T09:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T09:45:01+00:00] Fetched deals: 1
+[2026-07-02T09:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T09:45:02+00:00] Cells updated: 2
+[2026-07-02T09:45:02+00:00] === color-links end (1.58s) ===
+[2026-07-02T10:00:01+00:00] === color-links start ===
+[2026-07-02T10:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T10:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T10:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T10:00:02+00:00] Fetched deals: 1
+[2026-07-02T10:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T10:00:03+00:00] Cells updated: 2
+[2026-07-02T10:00:03+00:00] === color-links end (1.7s) ===
+[2026-07-02T10:15:01+00:00] === color-links start ===
+[2026-07-02T10:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T10:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T10:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T10:15:01+00:00] Fetched deals: 1
+[2026-07-02T10:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T10:15:03+00:00] Cells updated: 2
+[2026-07-02T10:15:03+00:00] === color-links end (1.8s) ===
+[2026-07-02T10:30:01+00:00] === color-links start ===
+[2026-07-02T10:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T10:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T10:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T10:30:02+00:00] Fetched deals: 1
+[2026-07-02T10:30:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T10:30:03+00:00] Cells updated: 2
+[2026-07-02T10:30:03+00:00] === color-links end (2.11s) ===
+[2026-07-02T10:45:01+00:00] === color-links start ===
+[2026-07-02T10:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T10:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T10:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T10:45:01+00:00] Fetched deals: 1
+[2026-07-02T10:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T10:45:02+00:00] Cells updated: 2
+[2026-07-02T10:45:02+00:00] === color-links end (1.62s) ===
+[2026-07-02T11:00:02+00:00] === color-links start ===
+[2026-07-02T11:00:02+00:00] Unique deals in sheet: 2
+[2026-07-02T11:00:02+00:00] Already green: 61, to check: 1
+[2026-07-02T11:00:02+00:00] Categories: [3,5,7]
+[2026-07-02T11:00:02+00:00] Fetched deals: 1
+[2026-07-02T11:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T11:00:03+00:00] Cells updated: 2
+[2026-07-02T11:00:03+00:00] === color-links end (1.7s) ===
+[2026-07-02T11:15:01+00:00] === color-links start ===
+[2026-07-02T11:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T11:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T11:15:02+00:00] Categories: [3,5,7]
+[2026-07-02T11:15:02+00:00] Fetched deals: 1
+[2026-07-02T11:15:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T11:15:03+00:00] Cells updated: 2
+[2026-07-02T11:15:03+00:00] === color-links end (1.95s) ===
+[2026-07-02T11:30:01+00:00] === color-links start ===
+[2026-07-02T11:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T11:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T11:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T11:30:01+00:00] Fetched deals: 1
+[2026-07-02T11:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T11:30:03+00:00] Cells updated: 2
+[2026-07-02T11:30:03+00:00] === color-links end (2.19s) ===
+[2026-07-02T11:45:01+00:00] === color-links start ===
+[2026-07-02T11:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T11:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T11:45:02+00:00] Categories: [3,5,7]
+[2026-07-02T11:45:02+00:00] Fetched deals: 1
+[2026-07-02T11:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T11:45:04+00:00] Cells updated: 2
+[2026-07-02T11:45:04+00:00] === color-links end (2.4s) ===
+[2026-07-02T12:00:01+00:00] === color-links start ===
+[2026-07-02T12:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T12:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T12:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T12:00:01+00:00] Fetched deals: 1
+[2026-07-02T12:00:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T12:00:02+00:00] Cells updated: 2
+[2026-07-02T12:00:02+00:00] === color-links end (1.63s) ===
+[2026-07-02T12:15:01+00:00] === color-links start ===
+[2026-07-02T12:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T12:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T12:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T12:15:01+00:00] Fetched deals: 1
+[2026-07-02T12:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T12:15:02+00:00] Cells updated: 2
+[2026-07-02T12:15:02+00:00] === color-links end (1.68s) ===
+[2026-07-02T12:30:01+00:00] === color-links start ===
+[2026-07-02T12:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T12:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T12:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T12:30:01+00:00] Fetched deals: 1
+[2026-07-02T12:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T12:30:03+00:00] Cells updated: 2
+[2026-07-02T12:30:03+00:00] === color-links end (1.77s) ===
+[2026-07-02T12:45:01+00:00] === color-links start ===
+[2026-07-02T12:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T12:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T12:45:02+00:00] Categories: [3,5,7]
+[2026-07-02T12:45:02+00:00] Fetched deals: 1
+[2026-07-02T12:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T12:45:03+00:00] Cells updated: 2
+[2026-07-02T12:45:03+00:00] === color-links end (1.63s) ===
+[2026-07-02T13:00:01+00:00] === color-links start ===
+[2026-07-02T13:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T13:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T13:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T13:00:01+00:00] Fetched deals: 1
+[2026-07-02T13:00:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T13:00:03+00:00] Cells updated: 2
+[2026-07-02T13:00:03+00:00] === color-links end (1.79s) ===
+[2026-07-02T13:15:01+00:00] === color-links start ===
+[2026-07-02T13:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T13:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T13:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T13:15:01+00:00] Fetched deals: 1
+[2026-07-02T13:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T13:15:03+00:00] Cells updated: 2
+[2026-07-02T13:15:03+00:00] === color-links end (1.8s) ===
+[2026-07-02T13:30:01+00:00] === color-links start ===
+[2026-07-02T13:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T13:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T13:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T13:30:01+00:00] Fetched deals: 1
+[2026-07-02T13:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T13:30:02+00:00] Cells updated: 2
+[2026-07-02T13:30:02+00:00] === color-links end (1.7s) ===
+[2026-07-02T13:45:01+00:00] === color-links start ===
+[2026-07-02T13:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T13:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T13:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T13:45:02+00:00] Fetched deals: 1
+[2026-07-02T13:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T13:45:03+00:00] Cells updated: 2
+[2026-07-02T13:45:03+00:00] === color-links end (1.76s) ===
+[2026-07-02T14:00:01+00:00] === color-links start ===
+[2026-07-02T14:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T14:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T14:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T14:00:02+00:00] Fetched deals: 1
+[2026-07-02T14:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T14:00:03+00:00] Cells updated: 2
+[2026-07-02T14:00:03+00:00] === color-links end (1.75s) ===
+[2026-07-02T14:15:01+00:00] === color-links start ===
+[2026-07-02T14:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T14:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T14:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T14:15:01+00:00] Fetched deals: 1
+[2026-07-02T14:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T14:15:03+00:00] Cells updated: 2
+[2026-07-02T14:15:03+00:00] === color-links end (1.64s) ===
+[2026-07-02T14:30:01+00:00] === color-links start ===
+[2026-07-02T14:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T14:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T14:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T14:30:01+00:00] Fetched deals: 1
+[2026-07-02T14:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T14:30:02+00:00] Cells updated: 2
+[2026-07-02T14:30:02+00:00] === color-links end (1.62s) ===
+[2026-07-02T14:45:01+00:00] === color-links start ===
+[2026-07-02T14:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T14:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T14:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T14:45:01+00:00] Fetched deals: 1
+[2026-07-02T14:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T14:45:03+00:00] Cells updated: 2
+[2026-07-02T14:45:03+00:00] === color-links end (1.68s) ===
+[2026-07-02T15:00:01+00:00] === color-links start ===
+[2026-07-02T15:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T15:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T15:00:02+00:00] Categories: [3,5,7]
+[2026-07-02T15:00:02+00:00] Fetched deals: 1
+[2026-07-02T15:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T15:00:03+00:00] Cells updated: 2
+[2026-07-02T15:00:03+00:00] === color-links end (1.89s) ===
+[2026-07-02T15:15:01+00:00] === color-links start ===
+[2026-07-02T15:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T15:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T15:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T15:15:01+00:00] Fetched deals: 1
+[2026-07-02T15:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T15:15:02+00:00] Cells updated: 2
+[2026-07-02T15:15:02+00:00] === color-links end (1.59s) ===
+[2026-07-02T15:30:01+00:00] === color-links start ===
+[2026-07-02T15:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T15:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T15:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T15:30:02+00:00] Fetched deals: 1
+[2026-07-02T15:30:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T15:30:03+00:00] Cells updated: 2
+[2026-07-02T15:30:03+00:00] === color-links end (1.63s) ===
+[2026-07-02T15:45:01+00:00] === color-links start ===
+[2026-07-02T15:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T15:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T15:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T15:45:01+00:00] Fetched deals: 1
+[2026-07-02T15:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T15:45:03+00:00] Cells updated: 2
+[2026-07-02T15:45:03+00:00] === color-links end (2.09s) ===
+[2026-07-02T16:00:01+00:00] === color-links start ===
+[2026-07-02T16:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T16:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T16:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T16:00:02+00:00] Fetched deals: 1
+[2026-07-02T16:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T16:00:03+00:00] Cells updated: 2
+[2026-07-02T16:00:03+00:00] === color-links end (2.21s) ===
+[2026-07-02T16:15:01+00:00] === color-links start ===
+[2026-07-02T16:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T16:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T16:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T16:15:01+00:00] Fetched deals: 1
+[2026-07-02T16:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T16:15:02+00:00] Cells updated: 2
+[2026-07-02T16:15:02+00:00] === color-links end (1.62s) ===
+[2026-07-02T16:30:02+00:00] === color-links start ===
+[2026-07-02T16:30:02+00:00] Unique deals in sheet: 2
+[2026-07-02T16:30:02+00:00] Already green: 61, to check: 1
+[2026-07-02T16:30:02+00:00] Categories: [3,5,7]
+[2026-07-02T16:30:02+00:00] Fetched deals: 1
+[2026-07-02T16:30:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T16:30:03+00:00] Cells updated: 2
+[2026-07-02T16:30:03+00:00] === color-links end (1.68s) ===
+[2026-07-02T16:45:01+00:00] === color-links start ===
+[2026-07-02T16:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T16:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T16:45:02+00:00] Categories: [3,5,7]
+[2026-07-02T16:45:02+00:00] Fetched deals: 1
+[2026-07-02T16:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T16:45:03+00:00] Cells updated: 2
+[2026-07-02T16:45:03+00:00] === color-links end (1.86s) ===
+[2026-07-02T17:00:01+00:00] === color-links start ===
+[2026-07-02T17:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T17:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T17:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T17:00:01+00:00] Fetched deals: 1
+[2026-07-02T17:00:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T17:00:03+00:00] Cells updated: 2
+[2026-07-02T17:00:03+00:00] === color-links end (2.6s) ===
+[2026-07-02T17:15:01+00:00] === color-links start ===
+[2026-07-02T17:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T17:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T17:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T17:15:01+00:00] Fetched deals: 1
+[2026-07-02T17:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T17:15:03+00:00] Cells updated: 2
+[2026-07-02T17:15:03+00:00] === color-links end (1.78s) ===
+[2026-07-02T17:30:01+00:00] === color-links start ===
+[2026-07-02T17:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T17:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T17:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T17:30:01+00:00] Fetched deals: 1
+[2026-07-02T17:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T17:30:03+00:00] Cells updated: 2
+[2026-07-02T17:30:03+00:00] === color-links end (1.87s) ===
+[2026-07-02T17:45:01+00:00] === color-links start ===
+[2026-07-02T17:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T17:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T17:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T17:45:01+00:00] Fetched deals: 1
+[2026-07-02T17:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T17:45:03+00:00] Cells updated: 2
+[2026-07-02T17:45:03+00:00] === color-links end (1.95s) ===
+[2026-07-02T18:00:01+00:00] === color-links start ===
+[2026-07-02T18:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T18:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T18:00:02+00:00] Categories: [3,5,7]
+[2026-07-02T18:00:02+00:00] Fetched deals: 1
+[2026-07-02T18:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T18:00:04+00:00] Cells updated: 2
+[2026-07-02T18:00:04+00:00] === color-links end (2.49s) ===
+[2026-07-02T18:15:01+00:00] === color-links start ===
+[2026-07-02T18:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T18:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T18:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T18:15:01+00:00] Fetched deals: 1
+[2026-07-02T18:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T18:15:03+00:00] Cells updated: 2
+[2026-07-02T18:15:03+00:00] === color-links end (2.08s) ===
+[2026-07-02T18:30:01+00:00] === color-links start ===
+[2026-07-02T18:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T18:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T18:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T18:30:01+00:00] Fetched deals: 1
+[2026-07-02T18:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T18:30:03+00:00] Cells updated: 2
+[2026-07-02T18:30:03+00:00] === color-links end (1.87s) ===
+[2026-07-02T18:45:01+00:00] === color-links start ===
+[2026-07-02T18:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T18:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T18:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T18:45:01+00:00] Fetched deals: 1
+[2026-07-02T18:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T18:45:03+00:00] Cells updated: 2
+[2026-07-02T18:45:03+00:00] === color-links end (1.67s) ===
+[2026-07-02T19:00:01+00:00] === color-links start ===
+[2026-07-02T19:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T19:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T19:00:02+00:00] Categories: [3,5,7]
+[2026-07-02T19:00:02+00:00] Fetched deals: 1
+[2026-07-02T19:00:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T19:00:04+00:00] Cells updated: 2
+[2026-07-02T19:00:04+00:00] === color-links end (2.31s) ===
+[2026-07-02T19:15:01+00:00] === color-links start ===
+[2026-07-02T19:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T19:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T19:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T19:15:01+00:00] Fetched deals: 1
+[2026-07-02T19:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T19:15:03+00:00] Cells updated: 2
+[2026-07-02T19:15:03+00:00] === color-links end (1.7s) ===
+[2026-07-02T19:30:01+00:00] === color-links start ===
+[2026-07-02T19:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T19:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T19:30:02+00:00] Categories: [3,5,7]
+[2026-07-02T19:30:02+00:00] Fetched deals: 1
+[2026-07-02T19:30:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T19:30:03+00:00] Cells updated: 2
+[2026-07-02T19:30:03+00:00] === color-links end (1.73s) ===
+[2026-07-02T19:45:01+00:00] === color-links start ===
+[2026-07-02T19:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T19:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T19:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T19:45:02+00:00] Fetched deals: 1
+[2026-07-02T19:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T19:45:03+00:00] Cells updated: 2
+[2026-07-02T19:45:03+00:00] === color-links end (1.82s) ===
+[2026-07-02T20:00:01+00:00] === color-links start ===
+[2026-07-02T20:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T20:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T20:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T20:00:01+00:00] Fetched deals: 1
+[2026-07-02T20:00:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T20:00:03+00:00] Cells updated: 2
+[2026-07-02T20:00:03+00:00] === color-links end (2.18s) ===
+[2026-07-02T20:15:01+00:00] === color-links start ===
+[2026-07-02T20:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T20:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T20:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T20:15:01+00:00] Fetched deals: 1
+[2026-07-02T20:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T20:15:03+00:00] Cells updated: 2
+[2026-07-02T20:15:03+00:00] === color-links end (1.75s) ===
+[2026-07-02T20:30:01+00:00] === color-links start ===
+[2026-07-02T20:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T20:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T20:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T20:30:01+00:00] Fetched deals: 1
+[2026-07-02T20:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T20:30:03+00:00] Cells updated: 2
+[2026-07-02T20:30:03+00:00] === color-links end (2.17s) ===
+[2026-07-02T20:45:01+00:00] === color-links start ===
+[2026-07-02T20:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T20:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T20:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T20:45:02+00:00] Fetched deals: 1
+[2026-07-02T20:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T20:45:03+00:00] Cells updated: 2
+[2026-07-02T20:45:03+00:00] === color-links end (1.7s) ===
+[2026-07-02T21:00:02+00:00] === color-links start ===
+[2026-07-02T21:00:02+00:00] Unique deals in sheet: 2
+[2026-07-02T21:00:02+00:00] Already green: 61, to check: 1
+[2026-07-02T21:00:04+00:00] Categories: [3,5,7]
+[2026-07-02T21:00:05+00:00] Fetched deals: 1
+[2026-07-02T21:00:05+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T21:00:07+00:00] Cells updated: 2
+[2026-07-02T21:00:07+00:00] === color-links end (5.3s) ===
+[2026-07-02T21:15:01+00:00] === color-links start ===
+[2026-07-02T21:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T21:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T21:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T21:15:01+00:00] Fetched deals: 1
+[2026-07-02T21:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T21:15:04+00:00] Cells updated: 2
+[2026-07-02T21:15:04+00:00] === color-links end (2.65s) ===
+[2026-07-02T21:30:01+00:00] === color-links start ===
+[2026-07-02T21:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T21:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T21:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T21:30:01+00:00] Fetched deals: 1
+[2026-07-02T21:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T21:30:02+00:00] Cells updated: 2
+[2026-07-02T21:30:02+00:00] === color-links end (1.57s) ===
+[2026-07-02T21:45:01+00:00] === color-links start ===
+[2026-07-02T21:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T21:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T21:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T21:45:01+00:00] Fetched deals: 1
+[2026-07-02T21:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T21:45:03+00:00] Cells updated: 2
+[2026-07-02T21:45:03+00:00] === color-links end (1.81s) ===
+[2026-07-02T22:00:01+00:00] === color-links start ===
+[2026-07-02T22:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T22:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T22:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T22:00:01+00:00] Fetched deals: 1
+[2026-07-02T22:00:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T22:00:03+00:00] Cells updated: 2
+[2026-07-02T22:00:03+00:00] === color-links end (2.63s) ===
+[2026-07-02T22:15:01+00:00] === color-links start ===
+[2026-07-02T22:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T22:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T22:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T22:15:01+00:00] Fetched deals: 1
+[2026-07-02T22:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T22:15:02+00:00] Cells updated: 2
+[2026-07-02T22:15:02+00:00] === color-links end (1.47s) ===
+[2026-07-02T22:30:01+00:00] === color-links start ===
+[2026-07-02T22:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T22:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T22:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T22:30:02+00:00] Fetched deals: 1
+[2026-07-02T22:30:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T22:30:03+00:00] Cells updated: 2
+[2026-07-02T22:30:03+00:00] === color-links end (2.11s) ===
+[2026-07-02T22:45:01+00:00] === color-links start ===
+[2026-07-02T22:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T22:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T22:45:02+00:00] Categories: [3,5,7]
+[2026-07-02T22:45:02+00:00] Fetched deals: 1
+[2026-07-02T22:45:02+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T22:45:03+00:00] Cells updated: 2
+[2026-07-02T22:45:03+00:00] === color-links end (1.73s) ===
+[2026-07-02T23:00:01+00:00] === color-links start ===
+[2026-07-02T23:00:01+00:00] Unique deals in sheet: 2
+[2026-07-02T23:00:01+00:00] Already green: 61, to check: 1
+[2026-07-02T23:00:01+00:00] Categories: [3,5,7]
+[2026-07-02T23:00:01+00:00] Fetched deals: 1
+[2026-07-02T23:00:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T23:00:03+00:00] Cells updated: 2
+[2026-07-02T23:00:03+00:00] === color-links end (1.6s) ===
+[2026-07-02T23:15:01+00:00] === color-links start ===
+[2026-07-02T23:15:01+00:00] Unique deals in sheet: 2
+[2026-07-02T23:15:01+00:00] Already green: 61, to check: 1
+[2026-07-02T23:15:01+00:00] Categories: [3,5,7]
+[2026-07-02T23:15:01+00:00] Fetched deals: 1
+[2026-07-02T23:15:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T23:15:03+00:00] Cells updated: 2
+[2026-07-02T23:15:03+00:00] === color-links end (1.7s) ===
+[2026-07-02T23:30:01+00:00] === color-links start ===
+[2026-07-02T23:30:01+00:00] Unique deals in sheet: 2
+[2026-07-02T23:30:01+00:00] Already green: 61, to check: 1
+[2026-07-02T23:30:01+00:00] Categories: [3,5,7]
+[2026-07-02T23:30:01+00:00] Fetched deals: 1
+[2026-07-02T23:30:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T23:30:02+00:00] Cells updated: 2
+[2026-07-02T23:30:02+00:00] === color-links end (1.69s) ===
+[2026-07-02T23:45:01+00:00] === color-links start ===
+[2026-07-02T23:45:01+00:00] Unique deals in sheet: 2
+[2026-07-02T23:45:01+00:00] Already green: 61, to check: 1
+[2026-07-02T23:45:01+00:00] Categories: [3,5,7]
+[2026-07-02T23:45:01+00:00] Fetched deals: 1
+[2026-07-02T23:45:01+00:00] Colors: green=0 persisted=61, red=1
+[2026-07-02T23:45:03+00:00] Cells updated: 2
+[2026-07-02T23:45:03+00:00] === color-links end (1.57s) ===
