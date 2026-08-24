@@ -1,0 +1,6 @@
+[2026-08-07T21:00:01+00:00] === start ===
+[2026-08-07T21:00:02+00:00] Existing dates: 39, month rows: 3
+[2026-08-07T21:00:03+00:00] Week separator (before Monday) → row 50
+[2026-08-07T21:00:04+00:00] Date: 14.09.2026 → row 51
+[2026-08-07T21:00:04+00:00] Total inserted rows in this run: 2
+[2026-08-07T21:00:04+00:00] === end (2.4s) ===
