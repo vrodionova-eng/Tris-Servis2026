@@ -97,13 +97,15 @@ function runJob(): void
     $bookings = fetchTechBookings($techUsers, $syncFrom, $syncTo);
     logline('Bookings from calendar: ' . count($bookings));
 
-    // ── 4. Active deals (for title→URL mapping) ───────────────────────────────
+    // ── 4. All deals (for title→URL mapping) ──────────────────────────────────
+    // No STAGE_SEMANTIC_ID filter: closed deals must also match, otherwise their
+    // links disappear from the sheet when the deal is closed (stale-cell clearing
+    // would wipe them). Closed deals keep their history in the sheet.
     $portal   = (string)parse_url(B24_WEBHOOK_URL, PHP_URL_HOST);
     $titleMap = []; // title => ['id' => ..., 'url' => ...]
     $start    = 0;
     do {
         $items = b24wh('crm.deal.list', [
-            'filter' => ['STAGE_SEMANTIC_ID' => 'P'],  // active stages only
             'select' => ['ID', 'TITLE'],
             'order'  => ['ID' => 'DESC'],
             'start'  => $start,
@@ -118,7 +120,7 @@ function runJob(): void
         }
         $start += 50;
     } while (count($items) === 50 && $start < 2000);
-    logline('Active deals: ' . count($titleMap));
+    logline('Deals (all stages): ' . count($titleMap));
 
     // ── 5. Build new assignments ──────────────────────────────────────────────
     // Key: 'DD.MM.YYYY|Surname', value: [dealId => ['id', 'url', 'title']]
