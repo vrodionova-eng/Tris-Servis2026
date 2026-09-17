@@ -42,6 +42,12 @@ $LOG_FILE = $LOG_DIR . '/' . date('Y-m-d') . '-color.log';
 $lock = @fopen($LOCK_FILE, 'c');
 if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) exit(0);
 
+// Coloring rewrites cell text from cron-cells.php as well as its colors.
+// Hold the sync lock from BEFORE reading state until all writes finish.
+// Non-blocking acquisition also avoids deadlocks with the deployment locks.
+$syncLock = @fopen(DATA_ROOT . '/cron.lock', 'c');
+if (!$syncLock || !flock($syncLock, LOCK_EX | LOCK_NB)) exit(0);
+
 function logline(string $s): void
 {
     global $LOG_FILE;
