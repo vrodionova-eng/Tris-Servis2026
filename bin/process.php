@@ -5,7 +5,7 @@
 // Strategy: employee-calendar-centric.
 //   1. Read personal calendars of all techs (calendar.event.get).
 //   2. Filter events by EVENT_TYPE="#resourcebooking#".
-//   3. Strip "Бронирование: " from NAME → match deal by title.
+//   3. Resolve the deal ID from the calendar CRM binding, not its title.
 //   4. Write richText (clickable) cells to Google Sheets.
 //
 // State: DATA_ROOT/cron-cells.php stores previous cell set for stale-cell clearing.
@@ -37,7 +37,10 @@ function logline(string $s): void
 }
 
 $lock = @fopen($LOCK_FILE, 'c');
-if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) exit(0);
+if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+    if (in_array('--dry-run', $argv, true)) { fwrite(STDERR, "Sync is busy; retry dry run later\n"); exit(75); }
+    exit(0);
+}
 
 if (!defined('B24_WEBHOOK_URL') || B24_WEBHOOK_URL === '') {
     logline('SKIP: B24_WEBHOOK_URL not set');
@@ -55,6 +58,7 @@ try {
     runJob();
 } catch (Throwable $e) {
     logline('EXCEPTION: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    exit(1);
 }
 
 logline('=== end (' . round(microtime(true) - $started, 2) . 's) ===');
@@ -97,42 +101,29 @@ function runJob(): void
     $bookings = fetchTechBookings($techUsers, $syncFrom, $syncTo);
     logline('Bookings from calendar: ' . count($bookings));
 
-    // ── 4. Active deals (for title→URL mapping) ───────────────────────────────
+    // All stages: closed deals retain their bookings, just as before this fix.
     $portal   = (string)parse_url(B24_WEBHOOK_URL, PHP_URL_HOST);
-    $titleMap = []; // title => ['id' => ..., 'url' => ...]
-    $start    = 0;
-    do {
-        $items = b24wh('crm.deal.list', [
-            'filter' => ['STAGE_SEMANTIC_ID' => 'P'],  // active stages only
-            'select' => ['ID', 'TITLE'],
-            'order'  => ['ID' => 'DESC'],
-            'start'  => $start,
-        ]);
-        if (!is_array($items)) $items = [];
-        foreach ($items as $deal) {
-            $t = trim((string)($deal['TITLE'] ?? ''));
-            if ($t !== '' && !isset($titleMap[$t])) {
-                $id = (string)$deal['ID'];
-                $titleMap[$t] = ['id' => $id, 'url' => "https://{$portal}/crm/deal/details/{$id}/"];
-            }
+    $dealMap = [];
+    foreach ($bookings as $booking) {
+        $id = $booking['dealId'];
+        if (isset($dealMap[$id])) continue;
+        $deal = b24wh('crm.deal.get', ['id' => $id]);
+        if (!is_array($deal) || (string)($deal['ID'] ?? '') !== $id || !isset($deal['TITLE'])) {
+            throw new RuntimeException("Invalid response for linked deal $id; sync aborted");
         }
-        $start += 50;
-    } while (count($items) === 50 && $start < 2000);
-    logline('Active deals: ' . count($titleMap));
+        $dealMap[$id] = ['id' => $id, 'url' => "https://{$portal}/crm/deal/details/{$id}/", 'title' => (string)$deal['TITLE']];
+    }
+    logline('Linked deals (all stages): ' . count($dealMap));
 
     // ── 5. Build new assignments ──────────────────────────────────────────────
     // Key: 'DD.MM.YYYY|Surname', value: [dealId => ['id', 'url', 'title']]
     $newAssign = [];
-    $missed    = [];
     $bookingTimes = []; // dealId => ['YYYY-MM-DD' => booking start timestamp, ...]
 
     foreach ($bookings as $b) {
-        $deal = $titleMap[$b['title']] ?? null;
-        if ($deal === null) {
-            if ($b['title'] !== '') $missed[$b['title']] = true;
-            continue;
-        }
-        $dealEntry = ['id' => $deal['id'], 'url' => $deal['url'], 'title' => $b['title']];
+        $deal = $dealMap[$b['dealId']];
+        $dealEntry = $deal;
+        logline('Booking event ' . $b['eventId'] . ' -> deal ' . $deal['id'] . ' on ' . $b['date'] . ' / ' . $b['surname']);
 
         // Collect booking start datetime per date for this deal (time-based coloring
         // per cell). A deal may appear on several dates; each cell colors only when
@@ -157,12 +148,25 @@ function runJob(): void
         }
     }
 
+    if (in_array('--dry-run', $GLOBALS['argv'] ?? [], true)) {
+        $previous = storeRead($CELLS_STATE) ?? [];
+        $changed = 0;
+        $cleared = 0;
+        foreach (array_unique(array_merge(array_keys($previous), array_keys($newAssign))) as $key) {
+            $before = $previous[$key] ?? [];
+            $after = $newAssign[$key] ?? [];
+            if ($before == $after) continue;
+            if ($after === []) $cleared++; else $changed++;
+            logline('DRY RUN ' . ($after === [] ? 'CLEAR ' : 'WRITE ') . $key
+                . ': deal IDs [' . implode(',', array_keys($before)) . '] -> [' . implode(',', array_keys($after)) . ']');
+        }
+        logline("DRY RUN: assignments=" . count($newAssign) . ", write=$changed, clear=$cleared; no sheet or sync-state writes");
+        return;
+    }
+
     // Persist booking start times (read by color-links.php — no extra API calls)
     storeWrite(DATA_ROOT . '/deal-booking-times.php', $bookingTimes);
 
-    if (!empty($missed)) {
-        logline('Titles not matched to active deals: ' . implode('; ', array_keys($missed)));
-    }
     logline('Assignments: ' . count($newAssign));
 
     // Link coloring is owned by color-links.php (per-cell by booking date+time).
