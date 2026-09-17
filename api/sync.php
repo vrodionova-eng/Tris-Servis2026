@@ -31,7 +31,9 @@ function loadTechUsers(array $columnMap): array
  *   ['date'    => 'DD.MM.YYYY',     // from DATE_FROM
  *    'dateTo'  => 'DD.MM.YYYY',     // from DATE_TO (may equal date for same-day)
  *    'surname' => 'Муха',
- *    'title'   => 'Ч/К ул.Молодежная...']  // stripped from NAME
+ *    'title'   => 'Ч/К ул.Молодежная...', // diagnostic only
+ *    'dealId'  => '839',                // from UF_CRM_CAL_EVENT
+ *    'eventId' => '889']
  */
 function fetchTechBookings(array $techUsers, string $from, string $to): array
 {
@@ -45,8 +47,9 @@ function fetchTechBookings(array $techUsers, string $from, string $to): array
                 'to'      => $to,
             ]);
         } catch (Throwable $e) {
-            continue;
+            throw new RuntimeException("Calendar read failed for user $userId", 0, $e);
         }
+        if (!is_array($events)) throw new RuntimeException("Invalid calendar response for user $userId");
         foreach ((array)$events as $event) {
             if (($event['EVENT_TYPE'] ?? '') !== '#resourcebooking#') continue;
             $rawFrom = trim((string)($event['DATE_FROM'] ?? ''));
@@ -64,7 +67,26 @@ function fetchTechBookings(array $techUsers, string $from, string $to): array
             $name  = (string)($event['NAME'] ?? '');
             $title = trim(preg_replace('/^Бронирование:\s*/u', '', $name));
 
+            // List responses may omit CRM bindings; getbyid includes them.
+            $eventId = (string)($event['ID'] ?? '');
+            if (empty($event['UF_CRM_CAL_EVENT'])) {
+                if ($eventId === '') throw new RuntimeException('Booking has no event ID');
+                $event = b24wh('calendar.event.getbyid', ['id' => $eventId]);
+            }
+            $dealIds = [];
+            foreach ((array)($event['UF_CRM_CAL_EVENT'] ?? []) as $binding) {
+                if (is_string($binding) && preg_match('/^D_([1-9][0-9]*)$/D', $binding, $match)) {
+                    $dealIds[$match[1]] = $match[1];
+                }
+            }
+            // Do not clear existing cells on missing/ambiguous CRM metadata.
+            if (count($dealIds) !== 1) {
+                throw new RuntimeException("Booking event $eventId has no unique CRM deal binding; sync aborted before sheet writes");
+            }
+
             $result[] = [
+                'dealId'       => (string)reset($dealIds),
+                'eventId'      => $eventId,
                 'date'         => $date,
                 'dateTo'       => $dateTo,
                 'surname'      => $surname,
